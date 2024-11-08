@@ -1,3 +1,7 @@
+"""
+Main pipeline script for spine analysis
+"""
+
 import logging
 from pathlib import Path
 import numpy as np
@@ -8,11 +12,12 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from preprocessing.data_loader import SpineDataLoader
-from preprocessing.image_preprocessor import SpineImagePreprocessor, SpineSegmentationPreprocessor
-from preprocessing.feature_extractor import SpineFeatureExtractor
-from segmentation.segmentation_pipeline import SpineSegmentation
-from shape_modeling.statistical_shape_model import HierarchicalSpineModel, SpineInstance
+from src.config.logging_config import setup_logging
+from src.preprocessing.data_loader import SpineDataLoader
+from src.preprocessing.image_preprocessor import SpineImagePreprocessor, SpineSegmentationPreprocessor
+from src.preprocessing.feature_extractor import SpineFeatureExtractor
+from src.segmentation.segmentation_pipeline import SpineSegmentation
+from src.shape_modeling.statistical_shape_model import HierarchicalSpineModel, SpineInstance
 
 logging.basicConfig(
     level=logging.INFO,
@@ -96,41 +101,59 @@ class SpineModelingPipeline:
         logger.info("Pipeline completed successfully.")
         
     def _process_dataset(self):
-        """Process all cases in the dataset"""
-        logger.info("Loading and processing dataset...")
-        
-        # Load annotations
-        self.loader.load_annotations()
-        
-        # Process each case
-        for study_id in tqdm(self.loader.train_csv['study_id'].values):
-            try:
-                # Load study data
-                study_data = self.loader.get_patient_data(str(study_id))
-                
-                # Process each series
-                segmentations = {}
-                for series_id, images in study_data['images'].items():
-                    if not images:
+            """Process all cases in the dataset"""
+            logger.info("Loading and processing dataset...")
+            
+            # Load annotations
+            self.loader.load_annotations()
+            
+            # Process each case
+            successful_cases = 0
+            failed_cases = 0
+            
+            for study_id in tqdm(self.loader.train_csv['study_id'].values):
+                try:
+                    # Load study data
+                    study_data = self.loader.get_patient_data(str(study_id))
+                    
+                    if study_data is None:
+                        logger.warning(f"Skipping study {study_id} due to missing data")
+                        failed_cases += 1
                         continue
                     
-                    # Preprocess for segmentation
-                    volume, metadata = self.seg_preprocessor.prepare_for_segmentation(images)
+                    # Process each series
+                    segmentations = {}
+                    for series_id, images in study_data['images'].items():
+                        if not images:
+                            continue
+                        
+                        # Preprocess for segmentation
+                        volume, metadata = self.seg_preprocessor.prepare_for_segmentation(images)
+                        
+                        # Perform segmentation
+                        segmentation = self.segmentation.segment_volume(volume)
+                        segmentations[series_id] = segmentation
                     
-                    # Perform segmentation
-                    segmentation = self.segmentation.segment_volume(volume)
-                    segmentations[series_id] = segmentation
-                
-                # Extract features and create spine instance
-                spine_instance = self.feature_extractor.extract_spine_features(
-                    study_data, segmentations
-                )
-                
-                self.spine_instances.append(spine_instance)
-                
-            except Exception as e:
-                logger.error(f"Error processing study {study_id}: {str(e)}")
-                continue
+                    # Extract features and create spine instance
+                    spine_instance = self.feature_extractor.extract_spine_features(
+                        study_data, segmentations
+                    )
+                    
+                    if spine_instance is not None:
+                        self.spine_instances.append(spine_instance)
+                        successful_cases += 1
+                    
+                except Exception as e:
+                    logger.error(f"Error processing study {study_id}: {str(e)}")
+                    failed_cases += 1
+                    continue
+            
+            logger.info(f"Processing completed. Successful cases: {successful_cases}, "
+                    f"Failed cases: {failed_cases}")
+            
+            if not self.spine_instances:
+                raise ValueError("No valid spine instances were processed. Check data and logs.")
+
     
     def _build_shape_model(self):
         """Build the hierarchical statistical shape model"""
@@ -316,12 +339,15 @@ class SpineModelingPipeline:
 def main():
     """Main entry point"""
     try:
+        # Setup logging
+        setup_logging(log_file='results/pipeline.log')
+        
         # Initialize and run pipeline
         pipeline = SpineModelingPipeline()
         pipeline.run_pipeline()
         
     except Exception as e:
-        logger.error(f"Pipeline failed: {str(e)}", exc_info=True)
+        logging.error(f"Pipeline failed: {str(e)}", exc_info=True)
         raise
     
 if __name__ == "__main__":
