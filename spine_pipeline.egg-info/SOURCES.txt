@@ -6,8 +6,9 @@ spine_pipeline.egg-info/dependency_links.txt
 spine_pipeline.egg-info/requires.txt
 spine_pipeline.egg-info/top_level.txt
 src/__init__.py
-src/logging_config.py
 src/main.py
+src/config/__init__.py
+src/config/logging_config.py
 src/preprocessing/__init__.py
 src/preprocessing/data_analyzer.py
 src/preprocessing/data_loader.py

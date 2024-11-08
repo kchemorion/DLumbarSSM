@@ -21,7 +21,7 @@ from scipy.ndimage import gaussian_filter
 import torch
 import torch.nn.functional as F
 from tqdm import tqdm
-
+from scipy.ndimage import gaussian_filter1d
 from src.preprocessing.image_preprocessor import SpineImagePreprocessor
 from src.shape_modeling.statistical_shape_model import SpineInstance, VertebralLevel
 
@@ -153,102 +153,209 @@ class SpineFeatureExtractor:
                         study_data: Dict[str, Any],
                         segmentations: Dict[str, np.ndarray]) -> None:
         """Validate input data format and content"""
-        required_keys = ['labels', 'coordinates', 'series']
-        if not all(key in study_data for key in required_keys):
-            raise ValueError(f"Missing required keys in study_data: {required_keys}")
-            
-        if not segmentations:
-            raise ValueError("Empty segmentations dictionary")
-            
-        # Validate segmentation masks
-        for series_id, mask in segmentations.items():
-            if not isinstance(mask, np.ndarray):
-                raise ValueError(f"Invalid segmentation type for series {series_id}")
-            if mask.ndim != 3:
-                raise ValueError(f"Invalid segmentation dimensions for series {series_id}")
+        try:
+            required_keys = ['labels', 'coordinates', 'series']
+            if not all(key in study_data for key in required_keys):
+                raise ValueError(f"Missing required keys in study_data: {required_keys}")
+                
+            if not segmentations:
+                raise ValueError("Empty segmentations dictionary")
+                
+            # Validate segmentation masks
+            for series_id, mask in segmentations.items():
+                if not isinstance(mask, np.ndarray):
+                    raise ValueError(f"Invalid segmentation type for series {series_id}")
+                
+                # Check dimensions (D, C, H, W)
+                if mask.ndim != 4:
+                    raise ValueError(
+                        f"Invalid segmentation dimensions for series {series_id}. "
+                        f"Expected 4D array (D, C, H, W), got shape {mask.shape}"
+                    )
+                    
+                # Check that dimensions make sense
+                D, C, H, W = mask.shape
+                if D < 1 or C < 1 or H < 16 or W < 16:
+                    raise ValueError(
+                        f"Invalid segmentation dimensions for series {series_id}: {mask.shape}"
+                    )
+                    
+                # Check value range
+                if not (0 <= mask.min() <= mask.max() <= 1):
+                    raise ValueError(
+                        f"Invalid segmentation values for series {series_id}. "
+                        f"Expected range [0,1], got [{mask.min()}, {mask.max()}]"
+                    )
+                    
+        except Exception as e:
+            logger.error(f"Error validating inputs: {str(e)}")
+            raise
     
     def _extract_global_shape(self, 
-                            segmentations: Dict[str, np.ndarray]) -> np.ndarray:
+                        segmentations: Dict[str, np.ndarray]) -> np.ndarray:
         """
         Extract global spine shape features from segmentations.
-        
-        Args:
-            segmentations: Dictionary of segmentation masks
-            
-        Returns:
-            Array of global shape features
         """
         try:
             combined_features = []
+            processed_series = 0
             
             for series_id, seg in segmentations.items():
+                logger.info(f"Processing series {series_id} with shape {seg.shape}")
+                series_features = []
+                
                 # 1. Extract centerline
                 centerline = self._extract_centerline(seg)
-                
+                if len(centerline) < 3:
+                    logger.warning(f"Insufficient centerline points for series {series_id}")
+                    continue
+                    
                 # 2. Compute geometric features
                 if FeatureType.GEOMETRIC in self.config.feature_types:
-                    curvature = self._compute_curvature(centerline)
-                    torsion = self._compute_torsion(centerline)
-                    combined_features.extend([centerline, curvature, torsion])
+                    try:
+                        curvature = self._compute_curvature(centerline)
+                        torsion = self._compute_torsion(centerline)
+                        
+                        # Normalize and flatten geometric features
+                        geometric_features = np.concatenate([
+                            centerline.flatten(),
+                            curvature.flatten(),
+                            torsion.flatten()
+                        ])
+                        series_features.append(geometric_features)
+                        logger.debug(f"Added geometric features of length {len(geometric_features)}")
+                    except Exception as e:
+                        logger.warning(f"Failed to compute geometric features: {e}")
                 
                 # 3. Extract morphological features
                 if FeatureType.MORPHOLOGICAL in self.config.feature_types:
-                    morph_features = self._extract_morphological_features(seg)
-                    combined_features.append(morph_features)
+                    try:
+                        morph_features = self._extract_morphological_features(seg)
+                        if morph_features is not None and len(morph_features) > 0:
+                            series_features.append(morph_features.flatten())
+                            logger.debug(f"Added morphological features of length {len(morph_features)}")
+                    except Exception as e:
+                        logger.warning(f"Failed to compute morphological features: {e}")
                 
-                # 4. Extract intensity features if available
-                if FeatureType.INTENSITY in self.config.feature_types:
-                    intensity_features = self._extract_intensity_features(seg)
-                    combined_features.append(intensity_features)
+                # Only add features if we got valid ones
+                if series_features:
+                    try:
+                        # Combine features for this series
+                        series_combined = np.concatenate(series_features)
+                        combined_features.append(series_combined)
+                        processed_series += 1
+                        logger.info(f"Successfully processed series {series_id}")
+                    except Exception as e:
+                        logger.warning(f"Failed to combine features for series {series_id}: {e}")
             
-            # Combine and normalize features
-            global_features = np.concatenate(combined_features)
-            global_features = self._normalize_features(global_features)
+            if processed_series == 0:
+                raise ValueError(f"No valid features extracted from any of the {len(segmentations)} series")
             
-            return global_features
+            # Combine features from all series
+            all_features = np.concatenate(combined_features)
+            
+            # Normalize combined features
+            normalized_features = self._normalize_features(all_features)
+            
+            logger.info(f"Successfully extracted features from {processed_series} series")
+            logger.debug(f"Final feature vector shape: {normalized_features.shape}")
+            
+            return normalized_features
             
         except Exception as e:
             logger.error(f"Error extracting global shape features: {str(e)}")
             raise
+
+    def _normalize_features(self, features: np.ndarray) -> np.ndarray:
+        """Normalize feature vector to zero mean and unit variance"""
+        try:
+            mean = np.mean(features)
+            std = np.std(features)
+            
+            if std < 1e-10:  # Avoid division by very small numbers
+                logger.warning("Very small standard deviation in features")
+                return features - mean
+                
+            normalized = (features - mean) / std
+            
+            # Check for invalid values
+            if np.any(~np.isfinite(normalized)):
+                logger.warning("Invalid values after normalization")
+                # Replace invalid values with 0
+                normalized[~np.isfinite(normalized)] = 0
+                
+            return normalized
+            
+        except Exception as e:
+            logger.error(f"Error normalizing features: {e}")
+            return features
     
     def _extract_centerline(self, 
-                          segmentation: np.ndarray,
-                          smooth: bool = True) -> np.ndarray:
+                        segmentation: np.ndarray,
+                        smooth: bool = True) -> np.ndarray:
         """
         Extract spine centerline from segmentation mask.
         
         Args:
-            segmentation: 3D segmentation mask
+            segmentation: 3D segmentation mask of shape (D, C, H, W) or (D, H, W)
             smooth: Whether to apply smoothing to the centerline
-            
-        Returns:
-            Array of centerline points
         """
         try:
             centerline = []
             
-            for slice_idx in range(segmentation.shape[0]):
-                mask = segmentation[slice_idx] > 0
-                if np.any(mask):
-                    # Find centroid using distance transform
-                    coords = self._compute_weighted_centroid(mask)
-                    centerline.append([slice_idx, coords[0], coords[1]])
+            # If segmentation is (D, C, H, W), take maximum probability class
+            if segmentation.ndim == 4:
+                mask_3d = np.argmax(segmentation, axis=1)
+            else:
+                mask_3d = segmentation
+                
+            logger.debug(f"Processing mask of shape {mask_3d.shape}")
             
+            for slice_idx in range(mask_3d.shape[0]):
+                # Convert to binary mask
+                mask = (mask_3d[slice_idx] > 0).astype(np.uint8)
+                
+                # Check if mask is empty
+                if not np.any(mask):
+                    logger.debug(f"Empty mask in slice {slice_idx}")
+                    continue
+                    
+                # Compute area to filter out noise
+                area = np.sum(mask)
+                if area < 100:  # Minimum area threshold
+                    logger.debug(f"Mask too small in slice {slice_idx}: {area} pixels")
+                    continue
+                
+                try:
+                    coords = self._compute_weighted_centroid(mask)
+                    if coords is not None:
+                        centerline.append([slice_idx, coords[0], coords[1]])
+                        logger.debug(f"Added centerline point at slice {slice_idx}")
+                except Exception as e:
+                    logger.debug(f"Failed to compute centroid for slice {slice_idx}: {e}")
+                    continue
+            
+            if len(centerline) < 3:
+                logger.warning(f"Not enough valid centerline points: {len(centerline)}")
+                return np.array([])
+                
             centerline = np.array(centerline)
             
-            if smooth and len(centerline) > 3:
-                # Apply smoothing using Gaussian filter
-                centerline[:, 1:] = gaussian_filter(
-                    centerline[:, 1:],
-                    sigma=self.config.gaussian_sigma,
-                    axis=0
-                )
+            if smooth:
+                try:
+                    # Smooth each coordinate separately
+                    for i in range(1, 3):  # Only smooth y and x coordinates
+                        centerline[:, i] = gaussian_filter1d(centerline[:, i], 
+                                                        sigma=self.config.gaussian_sigma)
+                except Exception as e:
+                    logger.warning(f"Failed to smooth centerline: {e}")
             
+            logger.info(f"Successfully extracted centerline with {len(centerline)} points")
             return centerline
             
         except Exception as e:
-            logger.error(f"Error extracting centerline: {str(e)}")
-            raise
+            logger.error(f"Error in centerline extraction: {str(e)}")
+            return np.array([])
     
     def _compute_weighted_centroid(self, mask: np.ndarray) -> np.ndarray:
         """
@@ -296,18 +403,21 @@ class SpineFeatureExtractor:
             Array of curvature values
         """
         try:
+            # Add small epsilon to avoid division by zero
+            eps = 1e-6
+            
             # Compute derivatives
-            dx = np.gradient(centerline[:, 1])
-            dy = np.gradient(centerline[:, 2])
+            dx = np.gradient(centerline[:, 1]) + eps
+            dy = np.gradient(centerline[:, 2]) + eps
             d2x = np.gradient(dx)
             d2y = np.gradient(dy)
             
             # Compute curvature using differential geometry formula
-            curvature = np.abs(d2x * dy - dx * d2y) / (dx * dx + dy * dy)**1.5
+            curvature = np.abs(d2x * dy - dx * d2y) / np.power(dx * dx + dy * dy + eps, 1.5)
             
             # Remove infinity values and smooth
             curvature = np.nan_to_num(curvature)
-            curvature = gaussian_filter(curvature, sigma=self.config.gaussian_sigma)
+            curvature = gaussian_filter1d(curvature, sigma=self.config.gaussian_sigma)
             
             return curvature
             
@@ -326,9 +436,12 @@ class SpineFeatureExtractor:
             Array of torsion values
         """
         try:
+            # Add small epsilon to avoid division by zero
+            eps = 1e-6
+            
             # Compute derivatives up to third order
-            dx = np.gradient(centerline[:, 1])
-            dy = np.gradient(centerline[:, 2])
+            dx = np.gradient(centerline[:, 1]) + eps
+            dy = np.gradient(centerline[:, 2]) + eps
             d2x = np.gradient(dx)
             d2y = np.gradient(dy)
             d3x = np.gradient(d2x)
@@ -336,23 +449,24 @@ class SpineFeatureExtractor:
             
             # Compute torsion
             numerator = (d3y * dx - d3x * dy)
-            denominator = ((dx * dx + dy * dy) * 
-                         np.sqrt(d2x * d2x + d2y * d2y))
+            denominator = ((dx * dx + dy * dy + eps) * 
+                        np.sqrt(d2x * d2x + d2y * d2y + eps))
             
             torsion = numerator / denominator
             
             # Clean up and smooth
             torsion = np.nan_to_num(torsion)
-            torsion = gaussian_filter(torsion, sigma=self.config.gaussian_sigma)
+            torsion = gaussian_filter1d(torsion, sigma=self.config.gaussian_sigma)
             
             return torsion
             
         except Exception as e:
             logger.error(f"Error computing torsion: {str(e)}")
             raise
+
     
     def _extract_morphological_features(self, 
-                                     segmentation: np.ndarray) -> np.ndarray:
+                                    segmentation: np.ndarray) -> np.ndarray:
         """
         Extract morphological features from segmentation mask.
         
@@ -365,23 +479,35 @@ class SpineFeatureExtractor:
         try:
             features = []
             
-            for slice_idx in range(segmentation.shape[0]):
-                mask = segmentation[slice_idx] > 0
+            # If segmentation is (D, C, H, W), take argmax along channel dimension
+            if segmentation.ndim == 4:
+                mask_3d = np.argmax(segmentation, axis=1)
+            else:
+                mask_3d = segmentation
+            
+            for slice_idx in range(mask_3d.shape[0]):
+                # Convert to binary mask
+                mask = (mask_3d[slice_idx] > 0).astype(np.uint8)
+                
                 if np.any(mask):
-                    # Compute area and perimeter
+                    # Compute basic shape descriptors
                     area = np.sum(mask)
                     perimeter = self._compute_perimeter(mask)
                     
                     # Compute shape descriptors
-                    circularity = 4 * np.pi * area / (perimeter * perimeter)
+                    circularity = 4 * np.pi * area / (perimeter * perimeter + 1e-6)
                     
-                    # Compute oriented bounding box
+                    # Compute oriented bounding box features
                     bbox_features = self._compute_bbox_features(mask)
                     
                     features.append([
                         area, perimeter, circularity, *bbox_features
                     ])
             
+            if not features:
+                raise ValueError("No valid features extracted from any slice")
+                
+            # Take mean across slices
             return np.mean(features, axis=0)
             
         except Exception as e:
@@ -450,6 +576,278 @@ class SpineFeatureExtractor:
             logger.error(f"Error extracting level features: {str(e)}")
             raise
 
+    def _get_level_coordinates(self, study_data: Dict[str, Any], level_id: str) -> np.ndarray:
+        """
+        Get coordinates for a specific vertebral level from the study data.
+        
+        Args:
+            study_data: Dictionary containing study information and annotations
+            level_id: Identifier for the vertebral level (e.g., 'L1_L2')
+            
+        Returns:
+            Array of coordinates for the specified level
+        """
+        try:
+            # Get coordinates for this level from the study data
+            level_coords = study_data['coordinates']
+            
+            # Filter coordinates for the specific level
+            level_mask = level_coords['level'] == level_id
+            if not any(level_mask):
+                logger.warning(f"No coordinates found for level {level_id}")
+                return np.zeros((0, 3))  # Return empty array if no coordinates found
+                
+            # Extract x, y coordinates and combine with slice information
+            coords = np.array([
+                level_coords.loc[level_mask, 'x'].values,
+                level_coords.loc[level_mask, 'y'].values,
+                level_coords.loc[level_mask, 'instance_number'].values
+            ]).T
+            
+            logger.debug(f"Extracted {len(coords)} coordinates for level {level_id}")
+            
+            # Sort by instance number
+            coords = coords[np.argsort(coords[:, 2])]
+            
+            return coords
+        
+        except Exception as e:
+            logger.error(f"Error getting coordinates for level {level_id}: {str(e)}")
+            raise
+
+    def _extract_level_features(self,
+                         study_data: Dict[str, Any],
+                         segmentations: Dict[str, np.ndarray]
+                         ) -> Dict[str, 'VertebralLevel']:
+        """
+        Extract features for each vertebral level.
+        
+        Args:
+            study_data: Study metadata and annotations
+            segmentations: Dictionary of segmentation masks
+            
+        Returns:
+            Dictionary of VertebralLevel objects
+        """
+        try:
+            levels = {}
+            level_ids = ['L1_L2', 'L2_L3', 'L3_L4', 'L4_L5', 'L5_S1']
+            
+            for level_id in level_ids:
+                logger.debug(f"Processing level {level_id}")
+                
+                # Get coordinates for this level
+                coords = self._get_level_coordinates(study_data, level_id)
+                
+                if len(coords) == 0:
+                    logger.warning(f"Skipping level {level_id} due to missing coordinates")
+                    continue
+                    
+                # Extract measurements
+                measurements = {}
+                for series_id, seg in segmentations.items():
+                    series_measurements = self._measure_level_features(
+                        seg, coords, level_id
+                    )
+                    # Update measurements with better values if available
+                    measurements.update(series_measurements)
+                
+                # Get severity grade from labels
+                severity_key = f'spinal_canal_stenosis_{level_id.lower()}'
+                severity = study_data['labels'].get(severity_key, 'Unknown')
+                
+                # Create VertebralLevel instance
+                levels[level_id] = VertebralLevel(
+                    level_id=level_id,
+                    canal_diameter=measurements.get('canal_diameter', 0.0),
+                    left_foraminal_width=measurements.get('left_foraminal_width', 0.0),
+                    right_foraminal_width=measurements.get('right_foraminal_width', 0.0),
+                    left_subarticular_space=measurements.get('left_subarticular_space', 0.0),
+                    right_subarticular_space=measurements.get('right_subarticular_space', 0.0),
+                    coordinates=coords,
+                    severity_grade=severity
+                )
+                
+                logger.debug(f"Completed feature extraction for level {level_id}")
+            
+            return levels
+            
+        except Exception as e:
+            logger.error(f"Error extracting level features: {str(e)}")
+            raise
+
+    def _measure_level_features(self,
+                         segmentation: np.ndarray,
+                         coords: np.ndarray,
+                         level_id: str) -> Dict[str, float]:
+        """
+        Measure features for a specific vertebral level from segmentation.
+        
+        Args:
+            segmentation: Segmentation mask
+            coords: Coordinates for the level
+            level_id: Identifier for the vertebral level
+            
+        Returns:
+            Dictionary of measurements
+        """
+        try:
+            # Find the relevant slices using instance numbers
+            instance_numbers = coords[:, 2]
+            min_instance = int(np.min(instance_numbers))
+            max_instance = int(np.max(instance_numbers))
+            
+            # Extract relevant slices from segmentation
+            relevant_slices = segmentation[min_instance:max_instance+1]
+            
+            # Compute measurements
+            measurements = {
+                'canal_diameter': self._measure_canal_diameter(relevant_slices, coords),
+                'left_foraminal_width': self._measure_foraminal_width(relevant_slices, coords, 'left'),
+                'right_foraminal_width': self._measure_foraminal_width(relevant_slices, coords, 'right'),
+                'left_subarticular_space': self._measure_subarticular_space(relevant_slices, coords, 'left'),
+                'right_subarticular_space': self._measure_subarticular_space(relevant_slices, coords, 'right')
+            }
+            
+            return measurements
+            
+        except Exception as e:
+            logger.error(f"Error measuring features for level {level_id}: {str(e)}")
+            return {}
+    def _extract_condition_states(self, study_data: Dict[str, Any]) -> Dict[str, str]:
+        """
+        Extract overall condition states from study data.
+        
+        Args:
+            study_data: Dictionary containing study metadata and labels
+            
+        Returns:
+            Dictionary mapping condition types to their severities
+        """
+        try:
+            labels = study_data['labels']
+            conditions = {}
+            
+            # Extract stenosis states
+            stenosis_cols = [col for col in labels if 'stenosis' in col 
+                            and not ('foraminal' in col or 'subarticular' in col)]
+            if stenosis_cols:
+                conditions['stenosis'] = max(str(labels[col]) for col in stenosis_cols)
+                
+            # Extract foraminal narrowing states
+            foraminal_cols = [col for col in labels if 'foraminal' in col]
+            if foraminal_cols:
+                conditions['foraminal_narrowing'] = max(str(labels[col]) for col in foraminal_cols)
+                
+            # Extract subarticular stenosis states
+            subarticular_cols = [col for col in labels if 'subarticular' in col]
+            if subarticular_cols:
+                conditions['subarticular_stenosis'] = max(str(labels[col]) for col in subarticular_cols)
+                
+            # Validate condition states
+            valid_states = {'Normal/Mild', 'Moderate', 'Severe'}
+            for condition, state in conditions.items():
+                if state not in valid_states:
+                    logger.warning(f"Invalid state '{state}' for condition '{condition}', "
+                                f"defaulting to 'Normal/Mild'")
+                    conditions[condition] = 'Normal/Mild'
+            
+            # Ensure all condition types are present
+            required_conditions = {
+                'stenosis', 
+                'foraminal_narrowing', 
+                'subarticular_stenosis'
+            }
+            
+            for condition in required_conditions:
+                if condition not in conditions:
+                    logger.warning(f"Missing condition '{condition}', "
+                                f"defaulting to 'Normal/Mild'")
+                    conditions[condition] = 'Normal/Mild'
+            
+            logger.debug(f"Extracted condition states: {conditions}")
+            return conditions
+            
+        except Exception as e:
+            logger.error(f"Error extracting condition states: {str(e)}")
+            raise
+
+    def _compute_bbox_features(self, mask: np.ndarray) -> np.ndarray:
+        """
+        Compute oriented bounding box features.
+        
+        Args:
+            mask: Binary mask
+            
+        Returns:
+            Array of bounding box features
+        """
+        try:
+            # Ensure mask is binary
+            mask = (mask > 0).astype(np.uint8)
+            
+            # Find contours
+            contours, _ = cv2.findContours(
+                mask, 
+                cv2.RETR_EXTERNAL, 
+                cv2.CHAIN_APPROX_SIMPLE
+            )
+            
+            if not contours:
+                return np.zeros(5)  # Return zero features if no contours
+                
+            # Get largest contour
+            largest_contour = max(contours, key=cv2.contourArea)
+            
+            # Get rotated rectangle
+            rect = cv2.minAreaRect(largest_contour)
+            box = cv2.boxPoints(rect)
+            
+            # Extract features
+            center, (width, height), angle = rect
+            area = width * height
+            aspect_ratio = max(width, height) / (min(width, height) + 1e-6)
+            
+            return np.array([
+                center[0], center[1],  # Center coordinates
+                width, height,         # Width and height
+                angle                  # Orientation
+            ])
+            
+        except Exception as e:
+            logger.error(f"Error computing bbox features: {str(e)}")
+            raise
+
+    def _compute_perimeter(self, mask: np.ndarray) -> float:
+        """
+        Compute perimeter of a binary mask.
+        
+        Args:
+            mask: Binary mask
+            
+        Returns:
+            Perimeter length
+        """
+        try:
+            # Ensure mask is binary
+            mask = (mask > 0).astype(np.uint8)
+            
+            # Find contours
+            contours, _ = cv2.findContours(
+                mask, 
+                cv2.RETR_EXTERNAL, 
+                cv2.CHAIN_APPROX_SIMPLE
+            )
+            
+            # Sum up contour lengths
+            perimeter = sum(cv2.arcLength(contour, closed=True) 
+                        for contour in contours)
+            
+            return float(perimeter)
+            
+        except Exception as e:
+            logger.error(f"Error computing perimeter: {str(e)}")
+            raise
     def _assess_feature_quality(self,
                               global_shape: np.ndarray,
                               levels: Dict[str, VertebralLevel],
