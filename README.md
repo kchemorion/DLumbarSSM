@@ -1,4 +1,6 @@
-# Spine Analysis Pipeline
+# MultiView-SpineNet 
+A Novel Architecture for Multi-view Spine Analysis with Cross-attention and Anatomical Constraints
+
 
 ## Setup
 
