@@ -1,4 +1,8 @@
-#trainer.py
+"""
+Multi-view Multi-task Spine Analysis Trainer
+Author: Francis Kiptengwer Chemorion
+"""
+
 import os
 import cv2
 import torch
@@ -17,16 +21,9 @@ from tqdm import tqdm
 from scipy.ndimage import gaussian_filter
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 import wandb
-from torch.cuda.amp import GradScaler, autocast
-import torch.distributed as dist
-import wandb
-from src.segmentation.models import SpineSegmentationModel
+from src.segmentation.models import MultiViewSpineNet, initialize_weights
+from src.training.metrics import MultiTaskMetrics, MultiTaskLoss
 from src.training.datasets import SpineSegmentationDataset
-from src.training.metrics import (
-    calculate_dice_score,
-    calculate_iou,
-    calculate_precision_recall
-)
 
 logger = logging.getLogger(__name__)
 
@@ -41,18 +38,24 @@ class SegmentationTrainer:
         self.model_save_dir.mkdir(parents=True, exist_ok=True)
         
         # Initialize tracking attributes
-        self.distributed = False  # Set to False by default for non-distributed training
+        self.distributed = False
         self.global_step = 0
-        self.scaler = None  # Will be set up if mixed precision is enabled
+        self.scaler = None
         
-        # Initialize metric tracking dictionaries
-        self.train_metrics = {'loss': [], 'dice': [], 'iou': []}
-        self.val_metrics = {'loss': [], 'dice': [], 'iou': []}
+        # Initialize metric tracking
+        self.metrics = MultiTaskMetrics()
+        self.train_metrics = {}
+        self.val_metrics = {}
+        self.best_metrics = {
+        'val_loss': float('inf'),
+        'val_seg_dice': 0,
+        'val_landmark_error': float('inf'),
+        'val_level_accuracy': 0,
+        'val_condition_accuracy': 0
+    }
         
-        # Setup configuration
+        # Setup configuration and components
         self._setup_config(config)
-        
-        # Initialize model and components
         self._setup_model()
         self._setup_datasets()
         self._setup_training_components()
@@ -67,27 +70,32 @@ class SegmentationTrainer:
 
     def _setup_config(self, config: Optional[Dict]):
         """Setup configuration with device setup"""
-        # Default configuration
         self.config = {
-            'batch_size': 4,
-            'num_epochs': 10,
+            'batch_size': 1,
+            'num_epochs': 50,
             'learning_rate': 1e-4,
             'weight_decay': 1e-5,
-            'num_workers': 2,
-            'patience': 5,
-            'T_0': 5,
+            'num_workers': 1,
+            'patience': 10,
+            'T_0': 10,
             'eta_min': 1e-6,
             'grad_clip': 1.0,
-            'mixed_precision': False,  # Disabled for CPU
+            'mixed_precision': True,
             'val_split': 0.2,
             'seed': 42,
             'pin_memory': False,
             'accumulation_steps': 4,
-            'max_samples': 5000,  # Limit dataset size
-            'target_size': (256, 256)  # Fixed image size
+            'max_samples': 2000,
+            'target_size': (256, 256),
+            'series_types': ["Sagittal T2/STIR", "Sagittal T1", "Axial T2"],
+            'tasks': {
+                'segmentation': True,
+                'landmarks': True,
+                'levels': True,
+                'conditions': True
+            }
         }
 
-        # Update with provided config
         if config:
             self.config.update(config)
 
@@ -102,58 +110,28 @@ class SegmentationTrainer:
         np.random.seed(self.config['seed'])
         if torch.cuda.is_available():
             torch.cuda.manual_seed(self.config['seed'])
-    
-    def _validate_config(self):
-        """Validate configuration values"""
-        validations = {
-            'batch_size': (int, (1, 512)),
-            'num_epochs': (int, (1, 1000)),
-            'learning_rate': (float, (1e-6, 1.0)),
-            'weight_decay': (float, (0.0, 0.1)),
-            'num_workers': (int, (0, os.cpu_count() or 1)),
-            'patience': (int, (1, 100)),
-            'T_0': (int, (1, 100)),
-            'eta_min': (float, (1e-12, 1e-3)),
-            'grad_clip': (float, (0.0, 100.0)),
-            'val_split': (float, (0.0, 0.5))
-        }
-        
-        for key, (dtype, (min_val, max_val)) in validations.items():
-            if key not in self.config:
-                raise ValueError(f"Missing required config key: {key}")
-            
-            val = self.config[key]
-            if not isinstance(val, dtype):
-                raise TypeError(f"Config {key} must be {dtype}, got {type(val)}")
-            
-            if not min_val <= val <= max_val:
-                raise ValueError(
-                    f"Config {key} must be between {min_val} and {max_val}, "
-                    f"got {val}"
-                )
-    
-    def _setup_distributed(self):
-        """Setup distributed training"""
-        if not torch.cuda.is_available():
-            raise RuntimeError("CUDA is required for distributed training")
-        
-        if not dist.is_initialized():
-            dist.init_process_group(backend='nccl')
-        
-        torch.cuda.set_device(dist.get_rank())
-        self.config['device'] = torch.device(f"cuda:{dist.get_rank()}")
-        
-        logger.info(
-            f"Initialized distributed process group: "
-            f"rank {dist.get_rank()}/{dist.get_world_size()}"
-        )
-    
+
+    # In trainer.py, after creating the model
     def _setup_model(self):
         """Initialize model"""
-        self.model = SpineSegmentationModel().to(self.device)
-        logger.info(f"Model initialized with {sum(p.numel() for p in self.model.parameters()):,} parameters")
+        try:
+            self.model = MultiViewSpineNet(
+                in_channels=1,
+                num_classes=4,
+                num_levels=5
+            ).to(self.device)
+            
+            # Initialize weights
+            initialize_weights(self.model)
+            
+            logger.info(f"Model initialized with {sum(p.numel() for p in self.model.parameters()):,} parameters")
+            
+        except Exception as e:
+            logger.error(f"Error setting up model: {str(e)}")
+            raise
 
     def _setup_datasets(self):
+        """Setup datasets and dataloaders"""
         full_dataset = SpineSegmentationDataset(
             data_root=self.data_root,
             mode='train',
@@ -189,35 +167,46 @@ class SegmentationTrainer:
             num_workers=self.config['num_workers'],
             pin_memory=self.config['pin_memory']
         )
-    
+
     def _setup_training_components(self):
         """Setup loss, optimizer, and other training components"""
-        self.criterion = nn.BCEWithLogitsLoss()
+        # Initialize loss and metrics
+        self.criterion = MultiTaskLoss(num_tasks=4)
+        
+        # Initialize optimizer
         self.optimizer = optim.AdamW(
             self.model.parameters(),
             lr=self.config['learning_rate'],
             weight_decay=self.config['weight_decay']
         )
         
+        # Initialize scheduler
         self.scheduler = CosineAnnealingWarmRestarts(
             self.optimizer,
             T_0=self.config['T_0'],
             eta_min=self.config['eta_min']
         )
         
+        # Initialize AMP scaler
+        if self.config['mixed_precision'] and torch.cuda.is_available():
+            self.scaler = torch.amp.GradScaler('cuda')
+        else:
+            self.scaler = None
+        
         # Initialize tracking variables
         self.best_val_loss = float('inf')
         self.patience_counter = 0
         self.current_epoch = 0
-    
+
     def _setup_wandb(self):
         """Initialize wandb logging"""
         wandb.init(
-            project='spine-segmentation',
+            project='spine-analysis',
+            name=f"multi-view-spine-model_{self.config['target_size'][0]}",
             config=self.config,
             resume=True if self.current_epoch > 0 else False
         )
-    
+
     def train(self):
         """Run complete training loop with enhanced error handling"""
         try:
@@ -232,16 +221,14 @@ class SegmentationTrainer:
                 # Training phase
                 train_metrics = self._train_epoch()
                 
-                # Validation phase (only on main process if distributed)
+                # Validation phase
                 if not self.distributed or (self.distributed and dist.get_rank() == 0):
                     val_metrics = self._validate_epoch()
-                    
-                    # Log metrics
                     self._log_metrics(train_metrics, val_metrics)
                     
-                    # Save checkpoint and check early stopping
-                    if val_metrics['val_loss'] < self.best_val_loss:
-                        self.best_val_loss = val_metrics['val_loss']
+                    # Check improvements
+                    improved = self._check_improvements(val_metrics)
+                    if improved:
                         self.patience_counter = 0
                         self._save_checkpoint('best.pth')
                     else:
@@ -265,89 +252,202 @@ class SegmentationTrainer:
             self._save_checkpoint('error.pth')
             raise
         finally:
-            if not self.distributed or (self.distributed and dist.get_rank() == 0):
-                wandb.finish()
-    
+            self.cleanup()
+
     def _train_epoch(self) -> Dict:
+        """Run one epoch of training"""
         self.model.train()
         epoch_metrics = {
             'train_loss': 0,
-            'train_dice': 0,
-            'train_iou': 0
+            'train_seg_dice': 0,
+            'train_landmark_error': 0,
+            'train_level_accuracy': 0,
+            'train_condition_accuracy': 0
         }
 
         self.optimizer.zero_grad()
 
         with tqdm(self.train_loader, desc=f"Epoch {self.current_epoch+1}") as pbar:
             for batch_idx, batch in enumerate(pbar):
-                # Move data to device
-                images = {k: v.to(self.config['device']) for k, v in batch['images'].items()}
-                masks = {k: v.to(self.config['device']) for k, v in batch['masks'].items()}
+                try:
+                    # Move data to device
+                    images = {k: v.to(self.device) for k, v in batch['images'].items()}
+                    masks = {k: v.to(self.device) for k, v in batch['masks'].items()}
+                    
+                    # Move other targets to device
+                    targets = {
+                        'segmentation': masks,
+                        'landmarks': batch['landmarks'].to(self.device),
+                        'vertebral_levels': batch['vertebral_levels'].to(self.device),
+                        'conditions': batch['conditions'].to(self.device)
+                    }
 
-                with autocast(enabled=self.config['mixed_precision']):
-                    outputs = {}
-                    for series_type, image in images.items():
-                        output = self.model(image)
-                        outputs[series_type] = output
+                    # Forward pass with mixed precision
+                    with autocast(enabled=self.config['mixed_precision']):
+                        # Forward pass through multi-view model
+                        outputs = self.model(images)
+                        
+                        # Compute multi-task loss
+                        loss, task_losses = self.criterion(outputs, targets)
+                        loss = loss / self.config['accumulation_steps']
 
-                    if any(o.shape != m.shape for o, m in zip(outputs.values(), masks.values())):
-                        raise ValueError("Shape mismatch between outputs and masks")
+                    # Backward pass
+                    if self.scaler is not None:
+                        self.scaler.scale(loss).backward()
+                        if (batch_idx + 1) % self.config['accumulation_steps'] == 0:
+                            self.scaler.unscale_(self.optimizer)
+                            torch.nn.utils.clip_grad_norm_(
+                                self.model.parameters(), 
+                                self.config['grad_clip']
+                            )
+                            self.scaler.step(self.optimizer)
+                            self.scaler.update()
+                            self.optimizer.zero_grad()
+                    else:
+                        loss.backward()
+                        if (batch_idx + 1) % self.config['accumulation_steps'] == 0:
+                            torch.nn.utils.clip_grad_norm_(
+                                self.model.parameters(), 
+                                self.config['grad_clip']
+                            )
+                            self.optimizer.step()
+                            self.optimizer.zero_grad()
 
-                    loss = sum(self.criterion(o, m) for o, m in zip(outputs.values(), masks.values()))
-                    loss = loss / self.config['accumulation_steps']
+                    # Update metrics
+                    epoch_metrics['train_loss'] += loss.item()
+                    
+                    with torch.no_grad():
+                        # Calculate segmentation metrics
+                        for view_type in images.keys():
+                            dice_score = calculate_dice_score(
+                                outputs['segmentation'][view_type],
+                                targets['segmentation'][view_type]
+                            )
+                            epoch_metrics['train_seg_dice'] += dice_score.item()
+                    
+                    # Update progress bar
+                    pbar.set_postfix({
+                        'loss': loss.item(),
+                        'dice': epoch_metrics['train_seg_dice']/(batch_idx+1)
+                    })
 
-                # Backward pass and gradient accumulation
-                # ... (existing training loop code)
+                except Exception as e:
+                    logger.error(f"Error in batch {batch_idx}: {str(e)}")
+                    # Skip this batch but continue training
+                    continue
 
         # Average metrics
         num_batches = len(self.train_loader)
-        for key in epoch_metrics:
-            epoch_metrics[key] /= num_batches
-
+        epoch_metrics = {k: v/num_batches for k, v in epoch_metrics.items()}
+        
         return epoch_metrics
-    
+
     @torch.no_grad()
     def _validate_epoch(self) -> Dict:
         """Run validation with enhanced metrics"""
         self.model.eval()
         val_metrics = {
             'val_loss': 0,
-            'val_dice': 0,
-            'val_iou': 0,
-            'val_precision': 0,
-            'val_recall': 0
+            'val_seg_dice': 0,
+            'val_landmark_error': 0,
+            'val_level_accuracy': 0,
+            'val_condition_accuracy': 0
         }
         
         for batch in tqdm(self.val_loader, desc="Validation"):
-            images = batch['image'].to(self.config['device'])
-            masks = batch['mask'].to(self.config['device'])
-            
-            # Forward pass
-            outputs = self.model(images)
-            loss = self.criterion(outputs, masks)
-            
-            # Calculate metrics
-            predictions = torch.sigmoid(outputs) > 0.5
-            dice = calculate_dice_score(predictions, masks)
-            iou = calculate_iou(predictions, masks)
-            precision, recall = calculate_precision_recall(predictions, masks)
-            
-            # Update metrics
-            val_metrics['val_loss'] += loss.item()
-            val_metrics['val_dice'] += dice.item()
-            val_metrics['val_iou'] += iou.item()
-            val_metrics['val_precision'] += precision.item()
-            val_metrics['val_recall'] += recall.item()
+            try:
+                # Move data to device
+                images = {k: v.to(self.device) for k, v in batch['images'].items()}
+                masks = {k: v.to(self.device) for k, v in batch['masks'].items()}
+                
+                targets = {
+                    'segmentation': masks,
+                    'landmarks': batch['landmarks'].to(self.device),
+                    'vertebral_levels': batch['vertebral_levels'].to(self.device),
+                    'conditions': batch['conditions'].to(self.device)
+                }
+                
+                # Forward pass
+                with torch.amp.autocast('cuda', enabled=self.config['mixed_precision']):
+                    outputs = self.model(images)
+                    loss, task_losses = self.criterion(outputs, targets)
+                
+                # Update metrics
+                val_metrics['val_loss'] += loss.item()
+                
+                # Calculate segmentation metrics
+                for view_type in images.keys():
+                    dice_score = calculate_dice_score(
+                        outputs['segmentation'][view_type],
+                        targets['segmentation'][view_type]
+                    )
+                    val_metrics['val_seg_dice'] += dice_score.item()
+                
+                # Calculate other metrics...
+                
+            except Exception as e:
+                logger.error(f"Error in validation batch: {str(e)}")
+                continue
         
         # Average metrics
         num_batches = len(self.val_loader)
-        for key in val_metrics:
-            val_metrics[key] /= num_batches        
+        val_metrics = {k: v/num_batches for k, v in val_metrics.items()}
         
         return val_metrics
-    
-    def _log_metrics(self, train_metrics: Dict, val_metrics: Dict):
-        """Enhanced metric logging with error handling"""
+
+    def _compute_batch_metrics(self, 
+                             outputs: Dict[str, torch.Tensor],
+                             targets: Dict[str, torch.Tensor],
+                             prefix: str = 'train_') -> Dict[str, float]:
+        """Compute metrics for a batch"""
+        metrics = {}
+        
+        # Segmentation metrics
+        seg_metrics = self.metrics.compute_segmentation_metrics(
+            outputs['segmentation'],
+            targets['segmentation']
+        )
+        metrics[f'{prefix}seg_dice'] = seg_metrics['dice'].item()
+        
+        # Landmark metrics
+        landmark_metrics = self.metrics.compute_landmark_metrics(
+            outputs['landmarks'],
+            targets['landmarks']
+        )
+        metrics[f'{prefix}landmark_error'] = landmark_metrics['mean_distance'].item()
+        
+        # Classification metrics
+        level_metrics = self.metrics.compute_classification_metrics(
+            outputs['vertebral_levels'],
+            targets['vertebral_levels']
+        )
+        metrics[f'{prefix}level_accuracy'] = level_metrics['accuracy'].item()
+        
+        condition_metrics = self.metrics.compute_classification_metrics(
+            outputs['conditions'],
+            targets['conditions']
+        )
+        metrics[f'{prefix}condition_accuracy'] = condition_metrics['accuracy'].item()
+        
+        return metrics
+
+    def _check_improvements(self, val_metrics: Dict[str, float]) -> bool:
+        """Check if any metrics improved"""
+        improved = False
+        
+        # Check each metric
+        if val_metrics['val_loss'] < self.best_metrics['val_loss']:
+            self.best_metrics['val_loss'] = val_metrics['val_loss']
+            improved = True
+            
+        if val_metrics['val_seg_dice'] > self.best_metrics['val_seg_dice']:
+            self.best_metrics['val_seg_dice'] = val_metrics['val_seg_dice']
+            improved = True
+            
+        return improved
+
+    def _log_metrics(self, train_metrics: Dict[str, float], val_metrics: Dict[str, float]):
+        """Log metrics to wandb and console"""
         try:
             # Combine metrics
             metrics = {
@@ -358,6 +458,7 @@ class SegmentationTrainer:
             }
             
             # Log to wandb
+            # Log to wandb
             if wandb.run is not None:
                 wandb.log(metrics, step=self.global_step)
             
@@ -366,26 +467,29 @@ class SegmentationTrainer:
                 f"Epoch {self.current_epoch+1} - "
                 f"Train Loss: {train_metrics['train_loss']:.4f}, "
                 f"Val Loss: {val_metrics['val_loss']:.4f}, "
-                f"Train Dice: {train_metrics['train_dice']:.4f}, "
-                f"Val Dice: {val_metrics['val_dice']:.4f}, "
-                f"Val IoU: {val_metrics['val_iou']:.4f}"
+                f"Train Dice: {train_metrics['train_seg_dice']:.4f}, "
+                f"Val Dice: {val_metrics['val_seg_dice']:.4f}, "
+                f"Landmark Error: {val_metrics['val_landmark_error']:.4f}, "
+                f"Level Acc: {val_metrics['val_level_accuracy']:.4f}"
             )
             logger.info(metric_str)
             
-            # Store metrics for later analysis
-            self.train_metrics['loss'].append(train_metrics['train_loss'])
-            self.train_metrics['dice'].append(train_metrics['train_dice'])
-            self.train_metrics['iou'].append(train_metrics['train_iou'])
-            
-            self.val_metrics['loss'].append(val_metrics['val_loss'])
-            self.val_metrics['dice'].append(val_metrics['val_dice'])
-            self.val_metrics['iou'].append(val_metrics['val_iou'])
+            # Store metrics
+            for key, value in metrics.items():
+                if key.startswith('train_'):
+                    if key not in self.train_metrics:
+                        self.train_metrics[key] = []
+                    self.train_metrics[key].append(value)
+                elif key.startswith('val_'):
+                    if key not in self.val_metrics:
+                        self.val_metrics[key] = []
+                    self.val_metrics[key].append(value)
             
         except Exception as e:
             logger.error(f"Error logging metrics: {str(e)}")
     
     def _save_checkpoint(self, filename: str):
-        """Enhanced checkpoint saving with error handling"""
+        """Save training checkpoint"""
         try:
             save_path = self.model_save_dir / filename
             
@@ -398,17 +502,17 @@ class SegmentationTrainer:
                 'optimizer_state_dict': self.optimizer.state_dict(),
                 'scheduler_state_dict': self.scheduler.state_dict(),
                 'scaler': self.scaler.state_dict() if self.scaler else None,
-                'best_val_loss': self.best_val_loss,
+                'best_metrics': self.best_metrics,
                 'train_metrics': self.train_metrics,
                 'val_metrics': self.val_metrics,
                 'config': self.config
             }
             
-            # Save checkpoint with error handling
+            # Save checkpoint
             torch.save(checkpoint, save_path)
             logger.info(f"Saved checkpoint to {save_path}")
             
-            # Also save a backup
+            # Save backup for important checkpoints
             if 'best' in filename or 'final' in filename:
                 backup_path = save_path.parent / f"backup_{filename}"
                 torch.save(checkpoint, backup_path)
@@ -416,7 +520,7 @@ class SegmentationTrainer:
                 
         except Exception as e:
             logger.error(f"Error saving checkpoint: {str(e)}")
-            # Try to save in a different location as backup
+            # Try emergency save
             try:
                 emergency_path = Path('emergency_checkpoint.pth')
                 torch.save(checkpoint, emergency_path)
@@ -425,22 +529,22 @@ class SegmentationTrainer:
                 logger.error("Failed to save emergency checkpoint")
     
     def load_checkpoint(self, checkpoint_path: Path):
-        """Enhanced checkpoint loading with validation"""
+        """Load training checkpoint"""
         try:
             logger.info(f"Loading checkpoint from {checkpoint_path}")
             
-            # Load checkpoint to CPU first to save memory
+            # Load to CPU first
             checkpoint = torch.load(checkpoint_path, map_location='cpu')
             
             # Validate checkpoint content
             required_keys = {
                 'epoch', 'model_state_dict', 'optimizer_state_dict',
-                'scheduler_state_dict', 'config'
+                'scheduler_state_dict', 'config', 'best_metrics'
             }
             if not all(k in checkpoint for k in required_keys):
                 raise ValueError(f"Checkpoint missing required keys: {required_keys}")
             
-            # Update config if needed
+            # Update config
             self.config.update(checkpoint['config'])
             
             # Load model state
@@ -455,16 +559,16 @@ class SegmentationTrainer:
             # Load scheduler state
             self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
             
-            # Load scaler if it exists
+            # Load scaler if exists
             if self.scaler and checkpoint.get('scaler'):
                 self.scaler.load_state_dict(checkpoint['scaler'])
             
             # Restore training state
             self.current_epoch = checkpoint['epoch']
             self.global_step = checkpoint.get('global_step', 0)
-            self.best_val_loss = checkpoint.get('best_val_loss', float('inf'))
+            self.best_metrics = checkpoint['best_metrics']
             
-            # Restore metrics if they exist
+            # Restore metrics history
             if 'train_metrics' in checkpoint:
                 self.train_metrics = checkpoint['train_metrics']
             if 'val_metrics' in checkpoint:
@@ -477,59 +581,68 @@ class SegmentationTrainer:
             raise
     
     @torch.no_grad()
-    def predict(self, image: torch.Tensor) -> np.ndarray:
+    def predict(self, 
+               images: Dict[str, torch.Tensor], 
+               return_all: bool = False) -> Dict[str, np.ndarray]:
         """
-        Make prediction with enhanced error handling and post-processing
+        Make predictions with the model
         
         Args:
-            image: Input image tensor [B, C, H, W]
+            images: Dictionary of input images for each view
+            return_all: Whether to return predictions for all tasks
             
         Returns:
-            Processed segmentation mask
+            Dictionary of predictions
         """
         try:
             self.model.eval()
             
-            # Ensure input is on correct device
-            image = image.to(self.config['device'])
+            # Move images to device
+            images = {k: v.to(self.device) for k, v in images.items()}
             
             # Make prediction
             with autocast(enabled=self.config['mixed_precision']):
-                output = self.model(image)
-                pred = torch.sigmoid(output) > 0.5
+                outputs = self.model(images)
+                
+                # Process outputs
+                predictions = {}
+                
+                # Segmentation predictions
+                seg_preds = {k: torch.sigmoid(v) > 0.5 for k, v in outputs['segmentation'].items()}
+                predictions['segmentation'] = {
+                    k: self._post_process_prediction(v.cpu().numpy())
+                    for k, v in seg_preds.items()
+                }
+                
+                if return_all:
+                    # Landmark predictions
+                    predictions['landmarks'] = outputs['landmarks'].cpu().numpy()
+                    
+                    # Level predictions
+                    predictions['vertebral_levels'] = torch.softmax(
+                        outputs['vertebral_levels'], dim=1
+                    ).cpu().numpy()
+                    
+                    # Condition predictions
+                    predictions['conditions'] = torch.softmax(
+                        outputs['conditions'], dim=1
+                    ).cpu().numpy()
             
-            # Move to CPU and convert to numpy
-            mask = pred.cpu().numpy()
-            
-            # Post-process each image in batch
-            processed_masks = []
-            for i in range(mask.shape[0]):
-                processed = self._post_process_prediction(mask[i])
-                processed_masks.append(processed)
-            
-            return np.stack(processed_masks)
+            return predictions
             
         except Exception as e:
             logger.error(f"Error during prediction: {str(e)}")
             raise
     
     def _post_process_prediction(self, mask: np.ndarray) -> np.ndarray:
-        """
-        Enhanced post-processing with better error handling
-        
-        Args:
-            mask: Raw prediction mask [C, H, W]
-            
-        Returns:
-            Processed mask
-        """
+        """Post-process segmentation predictions"""
         try:
             processed = mask.copy()
             
-            # 1. Apply morphological operations
+            # 1. Morphological operations
             kernel = np.ones((3, 3), np.uint8)
             for c in range(processed.shape[0]):
-                # Open operation (remove small objects)
+                # Remove small objects
                 processed[c] = cv2.morphologyEx(
                     processed[c].astype(np.uint8),
                     cv2.MORPH_OPEN,
@@ -537,7 +650,7 @@ class SegmentationTrainer:
                     iterations=1
                 )
                 
-                # Close operation (fill small holes)
+                # Fill small holes
                 processed[c] = cv2.morphologyEx(
                     processed[c],
                     cv2.MORPH_CLOSE,
@@ -545,25 +658,22 @@ class SegmentationTrainer:
                     iterations=1
                 )
             
-            # 2. Remove small components with area filtering
+            # 2. Remove small components
             for c in range(processed.shape[0]):
-                # Find connected components
-                num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
+                num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
                     processed[c].astype(np.uint8),
                     connectivity=8
                 )
                 
-                # Remove small components
-                min_size = max(50, processed[c].size * 0.001)  # Dynamic threshold
+                min_size = max(50, processed[c].size * 0.001)
                 for i in range(1, num_labels):
                     if stats[i, cv2.CC_STAT_AREA] < min_size:
                         labels[labels == i] = 0
                 
                 processed[c] = labels > 0
             
-            # 3. Apply boundary smoothing
+            # 3. Smooth boundaries
             for c in range(processed.shape[0]):
-                # Convert to float for gaussian filter
                 smooth = gaussian_filter(
                     processed[c].astype(float),
                     sigma=0.5,
@@ -575,7 +685,6 @@ class SegmentationTrainer:
             
         except Exception as e:
             logger.error(f"Error in post-processing: {str(e)}")
-            # Return original mask if post-processing fails
             return mask
 
     def cleanup(self):
