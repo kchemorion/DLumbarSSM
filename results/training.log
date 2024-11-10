@@ -346,3 +346,105 @@ Traceback (most recent call last):
   File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 250, in train
     if not self.distributed or (self.distributed and dist.get_rank() == 0):
 AttributeError: 'SegmentationTrainer' object has no attribute 'distributed'
+2024-11-10 07:57:03,634 - src.training.trainer - INFO - Using device: cpu
+2024-11-10 07:57:03,795 - src.training.trainer - INFO - Model initialized with 31,389,764 parameters
+2024-11-10 07:57:15,019 - src.training.datasets - INFO - Loaded 5000 samples for train
+2024-11-10 07:57:18,205 - src.training.trainer - INFO - Starting training...
+2024-11-10 07:57:20,047 - src.training.trainer - ERROR - Training failed: Target size (torch.Size([4, 256, 256])) must be the same as input size (torch.Size([4, 4, 256, 256]))
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 235, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 294, in _train_epoch
+    loss = self.criterion(outputs, masks)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/loss.py", line 819, in forward
+    return F.binary_cross_entropy_with_logits(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/functional.py", line 3624, in binary_cross_entropy_with_logits
+    raise ValueError(
+ValueError: Target size (torch.Size([4, 256, 256])) must be the same as input size (torch.Size([4, 4, 256, 256]))
+2024-11-10 07:57:20,282 - src.training.trainer - INFO - Saved checkpoint to models/error.pth
+2024-11-10 07:57:25,330 - __main__ - ERROR - Training failed: Target size (torch.Size([4, 256, 256])) must be the same as input size (torch.Size([4, 4, 256, 256]))
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 33, in main
+    trainer.train()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 235, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 294, in _train_epoch
+    loss = self.criterion(outputs, masks)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/loss.py", line 819, in forward
+    return F.binary_cross_entropy_with_logits(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/functional.py", line 3624, in binary_cross_entropy_with_logits
+    raise ValueError(
+ValueError: Target size (torch.Size([4, 256, 256])) must be the same as input size (torch.Size([4, 4, 256, 256]))
+2024-11-10 08:03:03,717 - src.training.trainer - INFO - Using device: cpu
+2024-11-10 08:03:03,888 - src.training.trainer - INFO - Model initialized with 31,389,764 parameters
+2024-11-10 08:03:15,070 - src.training.datasets - INFO - Loaded 5000 samples for train
+2024-11-10 08:03:17,660 - src.training.trainer - INFO - Starting training...
+2024-11-10 08:03:22,631 - src.training.trainer - ERROR - Training failed: "bitwise_and_cpu" not implemented for 'Float'
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 235, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 330, in _train_epoch
+    dice = calculate_dice_score(predictions, masks)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/metrics.py", line 10, in calculate_dice_score
+    intersection = (pred & target).float().sum((1, 2))
+RuntimeError: "bitwise_and_cpu" not implemented for 'Float'
+2024-11-10 08:03:22,843 - src.training.trainer - INFO - Saved checkpoint to models/error.pth
+2024-11-10 08:03:25,961 - __main__ - ERROR - Training failed: "bitwise_and_cpu" not implemented for 'Float'
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 33, in main
+    trainer.train()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 235, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 330, in _train_epoch
+    dice = calculate_dice_score(predictions, masks)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/metrics.py", line 10, in calculate_dice_score
+    intersection = (pred & target).float().sum((1, 2))
+RuntimeError: "bitwise_and_cpu" not implemented for 'Float'
+2024-11-10 08:06:25,184 - src.training.trainer - INFO - Using device: cpu
+2024-11-10 08:06:25,347 - src.training.trainer - INFO - Model initialized with 31,389,764 parameters
+2024-11-10 08:06:36,648 - src.training.datasets - INFO - Loaded 5000 samples for train
+2024-11-10 08:06:39,020 - src.training.trainer - INFO - Starting training...
+2024-11-10 08:52:13,874 - src.training.trainer - INFO - Training interrupted by user
+2024-11-10 08:57:56,279 - src.training.trainer - INFO - Using device: cuda
+2024-11-10 08:57:56,578 - src.training.trainer - INFO - Model initialized with 31,389,764 parameters
+2024-11-10 08:58:08,168 - src.training.datasets - INFO - Loaded 5000 samples for train
+2024-11-10 08:58:12,601 - src.training.trainer - INFO - Starting training...
+2024-11-10 09:03:58,595 - src.training.trainer - INFO - Epoch 1 - Train Loss: 0.4667, Val Loss: 0.3685, Train Dice: 0.5697, Val Dice: 0.9367, Val IoU: 0.9367
+2024-11-10 09:03:59,050 - src.training.trainer - INFO - Saved checkpoint to models/best.pth
+2024-11-10 09:03:59,485 - src.training.trainer - INFO - Saved backup checkpoint to models/backup_best.pth
+2024-11-10 09:09:46,801 - src.training.trainer - INFO - Epoch 2 - Train Loss: 0.3059, Val Loss: 0.2516, Train Dice: 0.9356, Val Dice: 0.9406, Val IoU: 0.9406
+2024-11-10 09:09:47,556 - src.training.trainer - INFO - Saved checkpoint to models/best.pth
+2024-11-10 09:09:48,241 - src.training.trainer - INFO - Saved backup checkpoint to models/backup_best.pth
+2024-11-10 09:15:35,588 - src.training.trainer - INFO - Epoch 3 - Train Loss: 0.2194, Val Loss: 0.1908, Train Dice: 0.9389, Val Dice: 0.9413, Val IoU: 0.9413
+2024-11-10 09:15:36,287 - src.training.trainer - INFO - Saved checkpoint to models/best.pth
+2024-11-10 09:15:36,947 - src.training.trainer - INFO - Saved backup checkpoint to models/backup_best.pth
+2024-11-10 09:21:24,642 - src.training.trainer - INFO - Epoch 4 - Train Loss: 0.1761, Val Loss: 0.1626, Train Dice: 0.9397, Val Dice: 0.9414, Val IoU: 0.9414
+2024-11-10 09:21:25,309 - src.training.trainer - INFO - Saved checkpoint to models/best.pth
+2024-11-10 09:21:25,963 - src.training.trainer - INFO - Saved backup checkpoint to models/backup_best.pth
+2024-11-10 09:27:12,941 - src.training.trainer - INFO - Epoch 5 - Train Loss: 0.1592, Val Loss: 0.1550, Train Dice: 0.9404, Val Dice: 0.9416, Val IoU: 0.9416
+2024-11-10 09:27:13,646 - src.training.trainer - INFO - Saved checkpoint to models/best.pth
+2024-11-10 09:27:14,292 - src.training.trainer - INFO - Saved backup checkpoint to models/backup_best.pth
+2024-11-10 09:33:00,787 - src.training.trainer - INFO - Epoch 6 - Train Loss: 0.1236, Val Loss: 0.0974, Train Dice: 0.9433, Val Dice: 0.9427, Val IoU: 0.9427
+2024-11-10 09:33:01,563 - src.training.trainer - INFO - Saved checkpoint to models/best.pth
+2024-11-10 09:33:02,237 - src.training.trainer - INFO - Saved backup checkpoint to models/backup_best.pth
+2024-11-10 09:38:48,521 - src.training.trainer - INFO - Epoch 7 - Train Loss: 0.0815, Val Loss: 0.0673, Train Dice: 0.9436, Val Dice: 0.9430, Val IoU: 0.9430
+2024-11-10 09:38:49,215 - src.training.trainer - INFO - Saved checkpoint to models/best.pth
+2024-11-10 09:38:49,889 - src.training.trainer - INFO - Saved backup checkpoint to models/backup_best.pth
+2024-11-10 10:00:55,443 - src.training.trainer - INFO - Epoch 8 - Train Loss: 0.0597, Val Loss: 0.0527, Train Dice: 0.9437, Val Dice: 0.9432, Val IoU: 0.9432
+2024-11-10 10:00:56,253 - src.training.trainer - INFO - Saved checkpoint to models/best.pth
+2024-11-10 10:00:57,015 - src.training.trainer - INFO - Saved backup checkpoint to models/backup_best.pth
+2024-11-10 10:23:25,685 - src.training.trainer - INFO - Epoch 9 - Train Loss: 0.0495, Val Loss: 0.0461, Train Dice: 0.9439, Val Dice: 0.9432, Val IoU: 0.9432
+2024-11-10 10:23:26,364 - src.training.trainer - INFO - Saved checkpoint to models/best.pth
+2024-11-10 10:23:27,006 - src.training.trainer - INFO - Saved backup checkpoint to models/backup_best.pth
+2024-11-10 10:29:10,728 - src.training.trainer - INFO - Epoch 10 - Train Loss: 0.0455, Val Loss: 0.0444, Train Dice: 0.9437, Val Dice: 0.9432, Val IoU: 0.9432
+2024-11-10 10:29:11,406 - src.training.trainer - INFO - Saved checkpoint to models/best.pth
+2024-11-10 10:29:12,044 - src.training.trainer - INFO - Saved backup checkpoint to models/backup_best.pth
+2024-11-10 10:29:12,493 - src.training.trainer - INFO - Saved checkpoint to models/checkpoint_epoch_10.pth

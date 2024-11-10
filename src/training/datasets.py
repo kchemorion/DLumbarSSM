@@ -114,10 +114,16 @@ class SpineSegmentationDataset(Dataset):
         )
         mask = mask.astype(np.float32)
         
-        # Apply transformations - this will handle resizing
+        # Apply transformations
         transformed = self.transform(image=image, mask=mask)
-        image = transformed['image']
-        mask = transformed['mask']
+        image = transformed['image']  # Will be [C, H, W]
+        mask = transformed['mask']    # Will be [H, W]
+        
+        # Add channel dimension to mask to match model output
+        mask = mask.unsqueeze(0)  # Convert to [1, H, W]
+        
+        # Repeat mask across channels if needed (assuming 4 classes)
+        mask = mask.repeat(4, 1, 1)  # Now [4, H, W]
         
         return {
             'image': image,

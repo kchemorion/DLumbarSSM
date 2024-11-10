@@ -1,3 +1,4 @@
+#trainer.py
 import os
 import cv2
 import torch
@@ -16,7 +17,9 @@ from tqdm import tqdm
 from scipy.ndimage import gaussian_filter
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 import wandb
-
+from torch.cuda.amp import GradScaler, autocast
+import torch.distributed as dist
+import wandb
 from src.segmentation.models import SpineSegmentationModel
 from src.training.datasets import SpineSegmentationDataset
 from src.training.metrics import (
@@ -30,20 +33,38 @@ logger = logging.getLogger(__name__)
 class SegmentationTrainer:
     """Production-ready training pipeline for spine segmentation"""
     def __init__(self,
-                 data_root: Path,
-                 model_save_dir: Path,
-                 config: Optional[Dict] = None):
+                data_root: Path,
+                model_save_dir: Path,
+                config: Optional[Dict] = None):
+        """Initialize the SegmentationTrainer with all required attributes"""
         self.data_root = Path(data_root)
         self.model_save_dir = Path(model_save_dir)
         self.model_save_dir.mkdir(parents=True, exist_ok=True)
         
+        # Initialize tracking attributes
+        self.distributed = False  # Set to False by default for non-distributed training
+        self.global_step = 0
+        self.scaler = None  # Will be set up if mixed precision is enabled
+        
+        # Initialize metric tracking dictionaries
+        self.train_metrics = {'loss': [], 'dice': [], 'iou': []}
+        self.val_metrics = {'loss': [], 'dice': [], 'iou': []}
+        
         # Setup configuration
         self._setup_config(config)
         
-        # Initialize model and components after config setup
+        # Initialize model and components
         self._setup_model()
         self._setup_datasets()
         self._setup_training_components()
+        
+        # Setup mixed precision if enabled
+        if self.config['mixed_precision'] and torch.cuda.is_available():
+            self.scaler = GradScaler()
+        
+        # Initialize wandb
+        if not self.distributed or (self.distributed and dist.get_rank() == 0):
+            self._setup_wandb()
 
     def _setup_config(self, config: Optional[Dict]):
         """Setup configuration with device setup"""
@@ -265,12 +286,19 @@ class SegmentationTrainer:
         with tqdm(self.train_loader, desc=f"Epoch {self.current_epoch+1}") as pbar:
             for batch_idx, batch in enumerate(pbar):
                 # Move data to device
-                images = batch['image'].to(self.config['device'])
-                masks = batch['mask'].to(self.config['device'])
+                images = batch['image'].to(self.config['device'])  # [B, 1, H, W]
+                masks = batch['mask'].to(self.config['device'])    # [B, 4, H, W]
                 
                 # Forward pass with mixed precision
                 with autocast(enabled=self.config['mixed_precision']):
-                    outputs = self.model(images)
+                    outputs = self.model(images)  # [B, 4, H, W]
+                    
+                    # Ensure outputs and masks have same shape
+                    if outputs.shape != masks.shape:
+                        raise ValueError(
+                            f"Shape mismatch: outputs {outputs.shape} vs masks {masks.shape}"
+                        )
+                    
                     loss = self.criterion(outputs, masks)
                     # Scale loss for gradient accumulation
                     loss = loss / self.config['accumulation_steps']
