@@ -5,64 +5,53 @@ from typing import List, Dict, Tuple
 import numpy as np
 
 class ConvBlock(nn.Module):
-    def __init__(self, in_ch: int, out_ch: int):
+    def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 3, padding=1),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_ch, out_ch, 3, padding=1),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True)
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
+        self.bn = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        return self.relu(self.bn(self.conv(x)))
+
+
+class SpineSegmentationModel(nn.Module):
+    def __init__(self, in_channels=1, out_channels=4):
+        super().__init__()
+        self.enc1 = self._make_encoder_block(in_channels, 64)
+        self.enc2 = self._make_encoder_block(64, 128)
+        self.enc3 = self._make_encoder_block(128, 256)
+        self.enc4 = self._make_encoder_block(256, 512)
+
+        self.dec4 = self._make_decoder_block(512, 256)
+        self.dec3 = self._make_decoder_block(256 + 256, 128)
+        self.dec2 = self._make_decoder_block(128 + 128, 64)
+        self.dec1 = self._make_decoder_block(64 + 64, out_channels)
+
+    def _make_encoder_block(self, in_channels, out_channels):
+        return nn.Sequential(
+            ConvBlock(in_channels, out_channels),
+            ConvBlock(out_channels, out_channels)
+        )
+
+    def _make_decoder_block(self, in_channels, out_channels):
+        return nn.Sequential(
+            ConvBlock(in_channels, out_channels),
+            nn.ConvTranspose2d(out_channels, out_channels, kernel_size=2, stride=2)
         )
 
     def forward(self, x):
-        return self.conv(x)
-
-class SpineSegmentationModel(nn.Module):
-    """U-Net based model for spine segmentation"""
-    
-    def __init__(self, in_channels=1, out_channels=4):
-        super().__init__()
-        
-        # Encoder
-        self.enc1 = ConvBlock(in_channels, 64)
-        self.enc2 = ConvBlock(64, 128)
-        self.enc3 = ConvBlock(128, 256)
-        self.enc4 = ConvBlock(256, 512)
-        
-        # Bridge
-        self.bridge = ConvBlock(512, 1024)
-        
-        # Decoder
-        self.dec4 = ConvBlock(1024 + 512, 512)
-        self.dec3 = ConvBlock(512 + 256, 256)
-        self.dec2 = ConvBlock(256 + 128, 128)
-        self.dec1 = ConvBlock(128 + 64, 64)
-        
-        # Final layer
-        self.final = nn.Conv2d(64, out_channels, 1)
-        
-        # Max pooling
-        self.pool = nn.MaxPool2d(2)
-        
-    def forward(self, x):
-        # Encoder
         enc1 = self.enc1(x)
-        enc2 = self.enc2(self.pool(enc1))
-        enc3 = self.enc3(self.pool(enc2))
-        enc4 = self.enc4(self.pool(enc3))
-        
-        # Bridge
-        bridge = self.bridge(self.pool(enc4))
-        
-        # Decoder
-        dec4 = self.dec4(torch.cat([F.interpolate(bridge, enc4.shape[2:]), enc4], 1))
-        dec3 = self.dec3(torch.cat([F.interpolate(dec4, enc3.shape[2:]), enc3], 1))
-        dec2 = self.dec2(torch.cat([F.interpolate(dec3, enc2.shape[2:]), enc2], 1))
-        dec1 = self.dec1(torch.cat([F.interpolate(dec2, enc1.shape[2:]), enc1], 1))
-        
-        return self.final(dec1)
+        enc2 = self.enc2(enc1)
+        enc3 = self.enc3(enc2)
+        enc4 = self.enc4(enc3)
+
+        dec4 = self.dec4(enc4)
+        dec3 = self.dec3(torch.cat([dec4, enc3], dim=1))
+        dec2 = self.dec2(torch.cat([dec3, enc2], dim=1))
+        dec1 = self.dec1(torch.cat([dec2, enc1], dim=1))
+
+        return dec1
 
 class SpineSegmentation:
     """Handles the segmentation pipeline"""

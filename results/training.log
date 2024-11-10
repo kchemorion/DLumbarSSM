@@ -448,3 +448,633 @@ RuntimeError: "bitwise_and_cpu" not implemented for 'Float'
 2024-11-10 10:29:11,406 - src.training.trainer - INFO - Saved checkpoint to models/best.pth
 2024-11-10 10:29:12,044 - src.training.trainer - INFO - Saved backup checkpoint to models/backup_best.pth
 2024-11-10 10:29:12,493 - src.training.trainer - INFO - Saved checkpoint to models/checkpoint_epoch_10.pth
+2024-11-10 11:25:00,960 - src.training.trainer - INFO - Using device: cuda
+2024-11-10 11:25:01,285 - src.training.trainer - INFO - Model initialized with 31,389,764 parameters
+2024-11-10 11:25:01,285 - __main__ - ERROR - Training failed: 'SpineSegmentationDataset' object has no attribute '_get_transform'
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 26, in main
+    trainer = SegmentationTrainer(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 57, in __init__
+    self._setup_datasets()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 157, in _setup_datasets
+    full_dataset = SpineSegmentationDataset(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 34, in __init__
+    "Sagittal T2/STIR": self._get_transform(mode, target_size),
+AttributeError: 'SpineSegmentationDataset' object has no attribute '_get_transform'
+2024-11-10 11:26:54,504 - src.training.trainer - INFO - Using device: cuda
+2024-11-10 11:26:54,793 - src.training.trainer - INFO - Model initialized with 31,389,764 parameters
+2024-11-10 11:26:54,806 - __main__ - ERROR - Training failed: name 'series_df' is not defined
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 26, in main
+    trainer = SegmentationTrainer(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 57, in __init__
+    self._setup_datasets()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 157, in _setup_datasets
+    full_dataset = SpineSegmentationDataset(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 39, in __init__
+    self.data = self._load_and_prepare_data()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 74, in _load_and_prepare_data
+    series_info = series_df[series_df['series_description'] == series_type]
+NameError: name 'series_df' is not defined
+2024-11-10 11:28:30,384 - src.training.trainer - INFO - Using device: cuda
+2024-11-10 11:28:30,673 - src.training.trainer - INFO - Model initialized with 31,389,764 parameters
+2024-11-10 11:29:19,456 - src.training.datasets - INFO - Loaded 5000 samples for train
+2024-11-10 11:29:23,425 - src.training.trainer - INFO - Starting training...
+2024-11-10 11:29:23,487 - src.training.trainer - ERROR - Training failed: Caught KeyError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 50, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 108, in __getitem__
+    image = self._load_dicom_image(item[f"{series_type}_image_path"])
+KeyError: 'Sagittal T2/STIR_image_path'
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 282, in _train_epoch
+    for batch_idx, batch in enumerate(pbar):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/tqdm/std.py", line 1181, in __iter__
+    for obj in iterable:
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 701, in __next__
+    data = self._next_data()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1465, in _next_data
+    return self._process_data(data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1491, in _process_data
+    data.reraise()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/_utils.py", line 715, in reraise
+    raise exception
+KeyError: Caught KeyError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 50, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 108, in __getitem__
+    image = self._load_dicom_image(item[f"{series_type}_image_path"])
+KeyError: 'Sagittal T2/STIR_image_path'
+
+2024-11-10 11:29:23,735 - src.training.trainer - INFO - Saved checkpoint to models/error.pth
+2024-11-10 11:29:32,338 - __main__ - ERROR - Training failed: Caught KeyError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 50, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 108, in __getitem__
+    image = self._load_dicom_image(item[f"{series_type}_image_path"])
+KeyError: 'Sagittal T2/STIR_image_path'
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 33, in main
+    trainer.train()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 282, in _train_epoch
+    for batch_idx, batch in enumerate(pbar):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/tqdm/std.py", line 1181, in __iter__
+    for obj in iterable:
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 701, in __next__
+    data = self._next_data()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1465, in _next_data
+    return self._process_data(data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1491, in _process_data
+    data.reraise()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/_utils.py", line 715, in reraise
+    raise exception
+KeyError: Caught KeyError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 50, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 108, in __getitem__
+    image = self._load_dicom_image(item[f"{series_type}_image_path"])
+KeyError: 'Sagittal T2/STIR_image_path'
+
+2024-11-10 11:35:32,837 - src.training.trainer - INFO - Using device: cuda
+2024-11-10 11:35:33,104 - src.training.trainer - INFO - Model initialized with 31,389,764 parameters
+2024-11-10 11:36:24,048 - src.training.datasets - INFO - Loaded 5000 samples for train
+2024-11-10 11:36:27,124 - src.training.trainer - INFO - Starting training...
+2024-11-10 11:36:27,202 - src.training.trainer - ERROR - Training failed: Caught KeyError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 50, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 108, in __getitem__
+    image = self._load_dicom_image(item[f"{series_type}_image_path"])
+KeyError: 'Sagittal T2/STIR_image_path'
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 282, in _train_epoch
+    for batch_idx, batch in enumerate(pbar):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/tqdm/std.py", line 1181, in __iter__
+    for obj in iterable:
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 701, in __next__
+    data = self._next_data()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1465, in _next_data
+    return self._process_data(data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1491, in _process_data
+    data.reraise()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/_utils.py", line 715, in reraise
+    raise exception
+KeyError: Caught KeyError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 50, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 108, in __getitem__
+    image = self._load_dicom_image(item[f"{series_type}_image_path"])
+KeyError: 'Sagittal T2/STIR_image_path'
+
+2024-11-10 11:36:27,443 - src.training.trainer - INFO - Saved checkpoint to models/error.pth
+2024-11-10 11:36:31,223 - __main__ - ERROR - Training failed: Caught KeyError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 50, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 108, in __getitem__
+    image = self._load_dicom_image(item[f"{series_type}_image_path"])
+KeyError: 'Sagittal T2/STIR_image_path'
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 33, in main
+    trainer.train()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 282, in _train_epoch
+    for batch_idx, batch in enumerate(pbar):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/tqdm/std.py", line 1181, in __iter__
+    for obj in iterable:
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 701, in __next__
+    data = self._next_data()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1465, in _next_data
+    return self._process_data(data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1491, in _process_data
+    data.reraise()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/_utils.py", line 715, in reraise
+    raise exception
+KeyError: Caught KeyError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 50, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 108, in __getitem__
+    image = self._load_dicom_image(item[f"{series_type}_image_path"])
+KeyError: 'Sagittal T2/STIR_image_path'
+
+2024-11-10 11:37:51,694 - src.training.trainer - INFO - Using device: cuda
+2024-11-10 11:37:51,962 - src.training.trainer - INFO - Model initialized with 31,389,764 parameters
+2024-11-10 11:38:40,523 - src.training.datasets - INFO - Loaded 5000 samples for train
+2024-11-10 11:38:43,485 - src.training.trainer - INFO - Starting training...
+2024-11-10 11:38:43,862 - src.training.trainer - ERROR - Training failed: conv2d() received an invalid combination of arguments - got (dict, Parameter, Parameter, tuple, tuple, tuple, int), but expected one of:
+ * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)
+      didn't match because some of the arguments have invalid types: ([31;1mdict[0m, [31;1mParameter[0m, [31;1mParameter[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mint[0m)
+ * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = "valid", tuple of ints dilation = 1, int groups = 1)
+      didn't match because some of the arguments have invalid types: ([31;1mdict[0m, [31;1mParameter[0m, [31;1mParameter[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mint[0m)
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 288, in _train_epoch
+    outputs = self.model(images)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 51, in forward
+    enc1 = self.enc1(x)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 20, in forward
+    return self.conv(x)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/container.py", line 250, in forward
+    input = module(input)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/conv.py", line 554, in forward
+    return self._conv_forward(input, self.weight, self.bias)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/conv.py", line 549, in _conv_forward
+    return F.conv2d(
+TypeError: conv2d() received an invalid combination of arguments - got (dict, Parameter, Parameter, tuple, tuple, tuple, int), but expected one of:
+ * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)
+      didn't match because some of the arguments have invalid types: ([31;1mdict[0m, [31;1mParameter[0m, [31;1mParameter[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mint[0m)
+ * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = "valid", tuple of ints dilation = 1, int groups = 1)
+      didn't match because some of the arguments have invalid types: ([31;1mdict[0m, [31;1mParameter[0m, [31;1mParameter[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mint[0m)
+
+2024-11-10 11:38:44,097 - src.training.trainer - INFO - Saved checkpoint to models/error.pth
+2024-11-10 11:38:48,263 - __main__ - ERROR - Training failed: conv2d() received an invalid combination of arguments - got (dict, Parameter, Parameter, tuple, tuple, tuple, int), but expected one of:
+ * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)
+      didn't match because some of the arguments have invalid types: ([31;1mdict[0m, [31;1mParameter[0m, [31;1mParameter[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mint[0m)
+ * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = "valid", tuple of ints dilation = 1, int groups = 1)
+      didn't match because some of the arguments have invalid types: ([31;1mdict[0m, [31;1mParameter[0m, [31;1mParameter[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mint[0m)
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 33, in main
+    trainer.train()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 288, in _train_epoch
+    outputs = self.model(images)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 51, in forward
+    enc1 = self.enc1(x)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 20, in forward
+    return self.conv(x)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/container.py", line 250, in forward
+    input = module(input)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/conv.py", line 554, in forward
+    return self._conv_forward(input, self.weight, self.bias)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/conv.py", line 549, in _conv_forward
+    return F.conv2d(
+TypeError: conv2d() received an invalid combination of arguments - got (dict, Parameter, Parameter, tuple, tuple, tuple, int), but expected one of:
+ * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)
+      didn't match because some of the arguments have invalid types: ([31;1mdict[0m, [31;1mParameter[0m, [31;1mParameter[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mint[0m)
+ * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = "valid", tuple of ints dilation = 1, int groups = 1)
+      didn't match because some of the arguments have invalid types: ([31;1mdict[0m, [31;1mParameter[0m, [31;1mParameter[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mtuple of (int, int)[0m, [31;1mint[0m)
+
+2024-11-10 11:46:21,735 - src.training.trainer - INFO - Using device: cuda
+2024-11-10 11:46:21,861 - src.training.trainer - INFO - Model initialized with 6,584,592 parameters
+2024-11-10 11:47:11,374 - src.training.datasets - INFO - Loaded 5000 samples for train
+2024-11-10 11:47:15,129 - src.training.trainer - INFO - Starting training...
+2024-11-10 11:47:16,207 - src.training.trainer - ERROR - Training failed: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 13.84 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 288, in _train_epoch
+    outputs = {k: self.model(v) for k, v in images.items()}
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 288, in <dictcomp>
+    outputs = {k: self.model(v) for k, v in images.items()}
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 47, in forward
+    enc4 = self.enc4(enc3)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/container.py", line 250, in forward
+    input = module(input)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 15, in forward
+    return self.relu(self.bn(self.conv(x)))
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
+    return F.batch_norm(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/functional.py", line 2812, in batch_norm
+    return torch.batch_norm(
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 13.84 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+2024-11-10 11:47:16,275 - src.training.trainer - INFO - Saved checkpoint to models/error.pth
+2024-11-10 11:47:20,107 - __main__ - ERROR - Training failed: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 13.84 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 33, in main
+    trainer.train()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 288, in _train_epoch
+    outputs = {k: self.model(v) for k, v in images.items()}
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 288, in <dictcomp>
+    outputs = {k: self.model(v) for k, v in images.items()}
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 47, in forward
+    enc4 = self.enc4(enc3)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/container.py", line 250, in forward
+    input = module(input)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 15, in forward
+    return self.relu(self.bn(self.conv(x)))
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
+    return F.batch_norm(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/functional.py", line 2812, in batch_norm
+    return torch.batch_norm(
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 13.84 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+2024-11-10 11:51:05,050 - src.training.trainer - INFO - Using device: cuda
+2024-11-10 11:51:05,146 - src.training.trainer - INFO - Model initialized with 1,648,816 parameters
+2024-11-10 11:51:55,613 - src.training.datasets - INFO - Loaded 5000 samples for train
+2024-11-10 11:51:58,042 - src.training.trainer - INFO - Starting training...
+2024-11-10 11:51:58,688 - src.training.trainer - ERROR - Training failed: Sizes of tensors must match except in dimension 1. Expected size 512 but got size 256 for tensor number 1 in the list.
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 290, in _train_epoch
+    output = self.model(image)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 50, in forward
+    dec3 = self.dec3(torch.cat([dec4, enc3], dim=1))
+RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 512 but got size 256 for tensor number 1 in the list.
+2024-11-10 11:51:58,710 - src.training.trainer - INFO - Saved checkpoint to models/error.pth
+2024-11-10 11:52:03,303 - __main__ - ERROR - Training failed: Sizes of tensors must match except in dimension 1. Expected size 512 but got size 256 for tensor number 1 in the list.
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 33, in main
+    trainer.train()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 290, in _train_epoch
+    output = self.model(image)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 50, in forward
+    dec3 = self.dec3(torch.cat([dec4, enc3], dim=1))
+RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 512 but got size 256 for tensor number 1 in the list.
+2024-11-10 11:53:07,492 - src.training.trainer - INFO - Using device: cuda
+2024-11-10 11:53:07,618 - src.training.trainer - INFO - Model initialized with 6,955,536 parameters
+2024-11-10 11:53:58,054 - src.training.datasets - INFO - Loaded 5000 samples for train
+2024-11-10 11:54:01,146 - src.training.trainer - INFO - Starting training...
+2024-11-10 11:54:02,124 - src.training.trainer - ERROR - Training failed: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 11.55 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 290, in _train_epoch
+    output = self.model(image)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 47, in forward
+    enc4 = self.enc4(enc3)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/container.py", line 250, in forward
+    input = module(input)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 15, in forward
+    return self.relu(self.bn(self.conv(x)))
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
+    return F.batch_norm(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/functional.py", line 2812, in batch_norm
+    return torch.batch_norm(
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 11.55 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+2024-11-10 11:54:02,180 - src.training.trainer - INFO - Saved checkpoint to models/error.pth
+2024-11-10 11:54:07,559 - __main__ - ERROR - Training failed: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 11.55 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 33, in main
+    trainer.train()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 290, in _train_epoch
+    output = self.model(image)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 47, in forward
+    enc4 = self.enc4(enc3)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/container.py", line 250, in forward
+    input = module(input)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 15, in forward
+    return self.relu(self.bn(self.conv(x)))
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
+    return F.batch_norm(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/functional.py", line 2812, in batch_norm
+    return torch.batch_norm(
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 11.55 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+2024-11-10 11:55:55,186 - src.training.trainer - INFO - Using device: cuda
+2024-11-10 11:55:55,311 - src.training.trainer - INFO - Model initialized with 6,955,536 parameters
+2024-11-10 11:56:43,391 - src.training.datasets - INFO - Loaded 1000 samples for train
+2024-11-10 11:56:46,384 - src.training.trainer - INFO - Starting training...
+2024-11-10 11:56:47,324 - src.training.trainer - ERROR - Training failed: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 11.55 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 290, in _train_epoch
+    output = self.model(image)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 47, in forward
+    enc4 = self.enc4(enc3)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/container.py", line 250, in forward
+    input = module(input)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 15, in forward
+    return self.relu(self.bn(self.conv(x)))
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
+    return F.batch_norm(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/functional.py", line 2812, in batch_norm
+    return torch.batch_norm(
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 11.55 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+2024-11-10 11:56:47,384 - src.training.trainer - INFO - Saved checkpoint to models/error.pth
+2024-11-10 11:56:50,604 - __main__ - ERROR - Training failed: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 11.55 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 33, in main
+    trainer.train()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 290, in _train_epoch
+    output = self.model(image)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 47, in forward
+    enc4 = self.enc4(enc3)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/container.py", line 250, in forward
+    input = module(input)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 15, in forward
+    return self.relu(self.bn(self.conv(x)))
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
+    return F.batch_norm(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/functional.py", line 2812, in batch_norm
+    return torch.batch_norm(
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 11.55 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+2024-11-10 19:24:05,317 - src.training.trainer - INFO - Using device: cuda
+2024-11-10 19:24:05,470 - src.training.trainer - INFO - Model initialized with 6,955,536 parameters
+2024-11-10 19:24:58,948 - src.training.datasets - INFO - Loaded 5000 samples for train
+2024-11-10 19:25:01,952 - src.training.trainer - INFO - Starting training...
+2024-11-10 19:25:05,298 - src.training.trainer - ERROR - Training failed: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 11.55 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 290, in _train_epoch
+    output = self.model(image)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 47, in forward
+    enc4 = self.enc4(enc3)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/container.py", line 250, in forward
+    input = module(input)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 15, in forward
+    return self.relu(self.bn(self.conv(x)))
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
+    return F.batch_norm(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/functional.py", line 2812, in batch_norm
+    return torch.batch_norm(
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 11.55 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+2024-11-10 19:25:05,354 - src.training.trainer - INFO - Saved checkpoint to models/error.pth
+2024-11-10 19:25:11,201 - __main__ - ERROR - Training failed: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 11.55 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 33, in main
+    trainer.train()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 233, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 290, in _train_epoch
+    output = self.model(image)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 47, in forward
+    enc4 = self.enc4(enc3)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/container.py", line 250, in forward
+    input = module(input)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/segmentation/models.py", line 15, in forward
+    return self.relu(self.bn(self.conv(x)))
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
+    return F.batch_norm(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/nn/functional.py", line 2812, in batch_norm
+    return torch.batch_norm(
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 3.81 GiB of which 425.19 MiB is free. Including non-PyTorch memory, this process has 3.38 GiB memory in use. Of the allocated memory 3.29 GiB is allocated by PyTorch, and 11.55 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
