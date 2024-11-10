@@ -29,95 +29,59 @@ logger = logging.getLogger(__name__)
 
 class SegmentationTrainer:
     """Production-ready training pipeline for spine segmentation"""
-    
-    def __init__(
-        self,
-        data_root: Path,
-        model_save_dir: Path,
-        config: Optional[Dict] = None,
-        distributed: bool = False
-    ):
-        """
-        Initialize trainer with enhanced error handling and distributed support
-        
-        Args:
-            data_root: Root directory containing data
-            model_save_dir: Directory to save models
-            config: Optional configuration dictionary
-            distributed: Whether to use distributed training
-        """
+    def __init__(self,
+                 data_root: Path,
+                 model_save_dir: Path,
+                 config: Optional[Dict] = None):
         self.data_root = Path(data_root)
         self.model_save_dir = Path(model_save_dir)
         self.model_save_dir.mkdir(parents=True, exist_ok=True)
-        self.distributed = distributed
         
-        # Validate and set configuration
+        # Setup configuration
         self._setup_config(config)
         
-        # Setup distributed training if needed
-        if self.distributed:
-            self._setup_distributed()
-        
-        # Initialize model and training components
+        # Initialize model and components after config setup
         self._setup_model()
         self._setup_datasets()
         self._setup_training_components()
-        
-        # Initialize trackers
-        self.best_val_loss = float('inf')
-        self.patience_counter = 0
-        self.current_epoch = 0
-        self.global_step = 0
-        
-        # Setup wandb only on main process
-        if not self.distributed or (self.distributed and dist.get_rank() == 0):
-            self._setup_wandb()
-    
+
     def _setup_config(self, config: Optional[Dict]):
-        """Setup and validate configuration with type checking"""
+        """Setup configuration with device setup"""
         # Default configuration
         self.config = {
-            'batch_size': 8,
-            'num_epochs': 100,
+            'batch_size': 4,
+            'num_epochs': 10,
             'learning_rate': 1e-4,
             'weight_decay': 1e-5,
-            'num_workers': min(os.cpu_count(), 8),
-            'patience': 10,
-            'T_0': 10,
+            'num_workers': 2,
+            'patience': 5,
+            'T_0': 5,
             'eta_min': 1e-6,
             'grad_clip': 1.0,
-            'mixed_precision': True,
+            'mixed_precision': False,  # Disabled for CPU
             'val_split': 0.2,
             'seed': 42,
-            'pin_memory': True,
-            'accumulation_steps': 1
+            'pin_memory': False,
+            'accumulation_steps': 4,
+            'max_samples': 5000,  # Limit dataset size
+            'target_size': (256, 256)  # Fixed image size
         }
-        
+
         # Update with provided config
         if config:
-            # Convert numeric strings to proper types
-            processed_config = {}
-            for k, v in config.items():
-                if isinstance(v, str):
-                    try:
-                        if '.' in v:
-                            processed_config[k] = float(v)
-                        else:
-                            processed_config[k] = int(v)
-                    except ValueError:
-                        processed_config[k] = v
-                else:
-                    processed_config[k] = v
-            
-            self.config.update(processed_config)
+            self.config.update(config)
+
+        # Setup device
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.config['device'] = self.device
         
-        # Set device
-        self.config['device'] = (
-            torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        )
+        logger.info(f"Using device: {self.device}")
         
-        # Validate configuration
-        self._validate_config()
+        # Set random seeds
+        torch.manual_seed(self.config['seed'])
+        np.random.seed(self.config['seed'])
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(self.config['seed'])
     
     def _validate_config(self):
         """Validate configuration values"""
@@ -165,22 +129,19 @@ class SegmentationTrainer:
         )
     
     def _setup_model(self):
-        """Initialize model with distributed support"""
-        self.model = SpineSegmentationModel().to(self.config['device'])
-        
-        if self.distributed:
-            self.model = DDP(
-                self.model,
-                device_ids=[dist.get_rank()],
-                output_device=dist.get_rank()
-            )
-    
+        """Initialize model"""
+        self.model = SpineSegmentationModel().to(self.device)
+        logger.info(f"Model initialized with {sum(p.numel() for p in self.model.parameters()):,} parameters")
+
     def _setup_datasets(self):
         """Setup datasets with proper splitting"""
         # Create full dataset
         full_dataset = SpineSegmentationDataset(
-            self.data_root,
-            mode='train'  # We'll split this ourselves
+            data_root=self.data_root,
+            mode='train',
+            series_type="Sagittal T2/STIR",
+            target_size=self.config['target_size'],
+            max_samples=self.config['max_samples']
         )
         
         # Calculate split sizes
@@ -195,26 +156,14 @@ class SegmentationTrainer:
         )
         
         # Create data loaders
-        loader_kwargs = {
-            'batch_size': self.config['batch_size'],
-            'num_workers': self.config['num_workers'],
-            'pin_memory': self.config['pin_memory']
-        }
-        
-        if self.distributed:
-            train_sampler = torch.utils.data.distributed.DistributedSampler(
-                self.train_dataset
-            )
-            loader_kwargs['sampler'] = train_sampler
-        else:
-            loader_kwargs['shuffle'] = True
-        
         self.train_loader = DataLoader(
             self.train_dataset,
-            **loader_kwargs
+            batch_size=self.config['batch_size'],
+            shuffle=True,
+            num_workers=self.config['num_workers'],
+            pin_memory=self.config['pin_memory']
         )
         
-        # Validation loader (no need for distributed sampling)
         self.val_loader = DataLoader(
             self.val_dataset,
             batch_size=self.config['batch_size'],
@@ -224,38 +173,24 @@ class SegmentationTrainer:
         )
     
     def _setup_training_components(self):
-        """Setup loss, optimizer, scheduler and other training components"""
-        # Loss function
+        """Setup loss, optimizer, and other training components"""
         self.criterion = nn.BCEWithLogitsLoss()
-        
-        # Optimizer
         self.optimizer = optim.AdamW(
             self.model.parameters(),
             lr=self.config['learning_rate'],
             weight_decay=self.config['weight_decay']
         )
         
-        # Learning rate scheduler
         self.scheduler = CosineAnnealingWarmRestarts(
             self.optimizer,
             T_0=self.config['T_0'],
             eta_min=self.config['eta_min']
         )
         
-        # Mixed precision training
-        self.scaler = GradScaler() if self.config['mixed_precision'] else None
-        
-        # Metrics tracking
-        self.train_metrics = {
-            'loss': [],
-            'dice': [],
-            'iou': []
-        }
-        self.val_metrics = {
-            'loss': [],
-            'dice': [],
-            'iou': []
-        }
+        # Initialize tracking variables
+        self.best_val_loss = float('inf')
+        self.patience_counter = 0
+        self.current_epoch = 0
     
     def _setup_wandb(self):
         """Initialize wandb logging"""

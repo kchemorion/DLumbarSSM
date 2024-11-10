@@ -14,54 +14,52 @@ from scipy.ndimage import gaussian_filter
 
 logger = logging.getLogger(__name__)
 
+# src/training/datasets.py
+
 class SpineSegmentationDataset(Dataset):
-    """Dataset for training spine segmentation model"""
-    
     def __init__(self, 
                  data_root: Path,
-                 series_type: str = "Sagittal T2/STIR",
                  mode: str = 'train',
-                 transform=None):
-        """
-        Initialize dataset
-        
-        Args:
-            data_root: Root directory containing data
-            series_type: Type of series to use
-            mode: 'train' or 'val'
-            transform: Optional transforms to apply
-        """
+                 series_type: str = "Sagittal T2/STIR",
+                 target_size: Tuple[int, int] = (256, 256),  # Reduced size
+                 max_samples: int = 5000):  # Limit samples for dev
+        """Initialize dataset with memory optimization"""
         self.data_root = Path(data_root)
-        self.series_type = series_type
         self.mode = mode
+        self.series_type = series_type
+        self.target_size = target_size
+        self.max_samples = max_samples
         
-        # Define augmentations
+        # Define augmentations with memory-efficient settings
         if mode == 'train':
             self.transform = A.Compose([
+                A.Resize(height=target_size[0], width=target_size[1], always_apply=True),
                 A.RandomRotate90(p=0.5),
                 A.HorizontalFlip(p=0.5),
-                A.VerticalFlip(p=0.5),
+                
+                # Removed heavy augmentations
                 A.OneOf([
-                    A.ElasticTransform(alpha=120, sigma=120 * 0.05, alpha_affine=120 * 0.03, p=0.5),
-                    A.GridDistortion(p=0.5),
-                    A.OpticalDistortion(distort_limit=1, shift_limit=0.5, p=0.5),
-                ], p=0.3),
-                A.OneOf([
-                    A.GaussNoise(p=0.5),
                     A.RandomBrightnessContrast(p=0.5),
                     A.RandomGamma(p=0.5),
                 ], p=0.3),
+                
                 A.Normalize(mean=[0.485], std=[0.229]),
                 ToTensorV2(),
             ])
         else:
             self.transform = A.Compose([
+                A.Resize(height=target_size[0], width=target_size[1], always_apply=True),
                 A.Normalize(mean=[0.485], std=[0.229]),
                 ToTensorV2(),
             ])
         
-        # Load annotations
         self.data = self._load_and_prepare_data()
+        
+        # Subsample data if needed
+        if len(self.data) > max_samples:
+            indices = np.random.choice(len(self.data), max_samples, replace=False)
+            self.data = [self.data[i] for i in indices]
+        
         logger.info(f"Loaded {len(self.data)} samples for {mode}")
         
     def _load_and_prepare_data(self) -> List[Dict]:
@@ -87,12 +85,15 @@ class SpineSegmentationDataset(Dataset):
             if len(series_coords) > 0:
                 image_dir = self.data_root / 'raw' / 'train_images' / study_id / series_id
                 if image_dir.exists():
-                    prepared_data.append({
-                        'study_id': study_id,
-                        'series_id': series_id,
-                        'coordinates': series_coords.to_dict('records'),
-                        'image_dir': image_dir
-                    })
+                    # Get all DICOM files in series
+                    dicom_files = sorted(image_dir.glob('*.dcm'))
+                    for dcm_file in dicom_files:
+                        prepared_data.append({
+                            'study_id': study_id,
+                            'series_id': series_id,
+                            'coordinates': series_coords.to_dict('records'),
+                            'image_path': dcm_file,
+                        })
         
         return prepared_data
     
@@ -100,24 +101,23 @@ class SpineSegmentationDataset(Dataset):
         return len(self.data)
     
     def __getitem__(self, idx: int) -> Dict:
-        """Get a single sample"""
         item = self.data[idx]
         
-        # Load image
-        image_paths = sorted(item['image_dir'].glob('*.dcm'))
-        image = self._load_dicom_image(image_paths[0])
+        # Load and preprocess image
+        image = self._load_dicom_image(item['image_path'])
+        image = image.astype(np.float32)
         
         # Create mask
         mask = self._create_mask_from_coordinates(
             item['coordinates'],
             image.shape
         )
+        mask = mask.astype(np.float32)
         
-        # Apply augmentations
-        if self.transform:
-            transformed = self.transform(image=image, mask=mask)
-            image = transformed['image']
-            mask = transformed['mask']
+        # Apply transformations - this will handle resizing
+        transformed = self.transform(image=image, mask=mask)
+        image = transformed['image']
+        mask = transformed['mask']
         
         return {
             'image': image,
@@ -127,27 +127,31 @@ class SpineSegmentationDataset(Dataset):
         }
     
     def _load_dicom_image(self, path: Path) -> np.ndarray:
-        """Load and preprocess DICOM image"""
-        import pydicom
-        dcm = pydicom.dcmread(str(path))
-        image = dcm.pixel_array.astype(float)
-        
-        # Normalize to [0, 1]
-        image = (image - image.min()) / (image.max() - image.min() + 1e-8)
-        
-        return image
+        """Memory-efficient DICOM loading"""
+        try:
+            import pydicom
+            dcm = pydicom.dcmread(str(path))
+            
+            # Convert to uint8 to save memory
+            image = dcm.pixel_array.astype(np.float32)
+            image = ((image - image.min()) / (image.max() - image.min() + 1e-8) * 255).astype(np.uint8)
+            
+            return image
+            
+        except Exception as e:
+            logger.error(f"Error loading DICOM {path}: {e}")
+            # Return blank image of target size
+            return np.zeros(self.target_size, dtype=np.uint8)
     
-    def _create_mask_from_coordinates(self, 
-                                    coordinates: List[Dict],
+    def _create_mask_from_coordinates(self, coordinates: List[Dict], 
                                     image_shape: Tuple[int, int]) -> np.ndarray:
         """Create segmentation mask from coordinates"""
         mask = np.zeros(image_shape, dtype=np.float32)
         
         for coord in coordinates:
             x, y = int(coord['x']), int(coord['y'])
-            cv2.circle(mask, (x, y), radius=3, color=1, thickness=-1)
-        
-        # Apply Gaussian smoothing to create soft masks
-        mask = gaussian_filter(mask, sigma=2)
+            # Skip if coordinates are outside image
+            if 0 <= x < image_shape[1] and 0 <= y < image_shape[0]:
+                cv2.circle(mask, (x, y), radius=3, color=1, thickness=-1)
         
         return mask

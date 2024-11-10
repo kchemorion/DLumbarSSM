@@ -1,4 +1,4 @@
-# train_segmentation.py
+# src/training/train_segmentation.py
 
 import wandb
 from pathlib import Path
@@ -12,33 +12,29 @@ def main():
     setup_logging(log_file='results/training.log')
     logger = logging.getLogger(__name__)
     
-    # Load configuration
-    config_path = Path('config/training_config.yaml')
-    with open(config_path) as f:
-        config = yaml.safe_load(f)
-    
-    # Initialize trainer
-    trainer = SegmentationTrainer(
-        data_root=Path('data'),
-        model_save_dir=Path('models'),
-        config=config
-    )
-    
-    # Resume from checkpoint if exists
-    checkpoint_path = Path('models/latest.pth')
-    if checkpoint_path.exists():
-        trainer.load_checkpoint(checkpoint_path)
-    
     try:
+        # Initialize trainer with memory-efficient settings
+        config = {
+            'batch_size': 4,
+            'num_epochs': 10,
+            'max_samples': 5000,  # Limit samples for initial testing
+            'target_size': (256, 256),  # Smaller image size
+            'mixed_precision': False,  # Disabled for CPU
+            'num_workers': 2
+        }
+        
+        trainer = SegmentationTrainer(
+            data_root=Path('data'),
+            model_save_dir=Path('models'),
+            config=config
+        )
+        
         # Run training
         trainer.train()
-    except KeyboardInterrupt:
-        logger.info("Training interrupted by user")
+        
     except Exception as e:
         logger.error(f"Training failed: {str(e)}", exc_info=True)
     finally:
-        # Save final checkpoint
-        trainer._save_checkpoint('final.pth')
         wandb.finish()
 
 if __name__ == "__main__":

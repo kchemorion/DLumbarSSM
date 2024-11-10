@@ -1,2 +1,348 @@
 2024-11-09 14:23:51,203 - src.training.datasets - INFO - Loaded 1973 samples for train
 2024-11-09 14:23:52,511 - src.training.datasets - INFO - Loaded 1973 samples for val
+2024-11-10 07:23:06,903 - __main__ - ERROR - Training failed: [Errno 2] No such file or directory: 'src/config/training_config.yaml'
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 43, in main
+    config = load_config(config_path)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 12, in load_config
+    with open(config_path) as f:
+FileNotFoundError: [Errno 2] No such file or directory: 'src/config/training_config.yaml'
+2024-11-10 07:23:41,344 - src.training.datasets - INFO - Loaded 1973 samples for train
+2024-11-10 07:23:45,001 - src.training.trainer - INFO - Starting training...
+2024-11-10 07:23:45,169 - src.training.trainer - ERROR - Training failed: Caught error in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 50, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 118, in __getitem__
+    transformed = self.transform(image=image, mask=mask)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/composition.py", line 424, in __call__
+    data = t(**data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/composition.py", line 572, in __call__
+    data = t(force_apply=True, **data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/transforms_interface.py", line 172, in __call__
+    return self.apply_with_params(params, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/transforms_interface.py", line 197, in apply_with_params
+    target_function(ensure_contiguous_output(arg), **params),
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/augmentations/transforms.py", line 2503, in apply
+    return fmain.add_noise(img, gauss)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/utils.py", line 113, in wrapped_function
+    result = func(img, *args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/augmentations/functional.py", line 1882, in add_noise
+    return add_array(img, noise)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/utils.py", line 113, in wrapped_function
+    result = func(img, *args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/functions.py", line 253, in add_array
+    return add_opencv(img, value)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/decorators.py", line 43, in wrapped_function
+    result = func(img, *args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/functions.py", line 228, in add_opencv
+    return cv2.add(img, value)
+cv2.error: OpenCV(4.10.0) /io/opencv/modules/core/src/arithm.cpp:683: error: (-5:Bad argument) When the input arrays in add/subtract/multiply/divide functions have different types, the output array type must be explicitly specified in function 'arithm_op'
+
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 285, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 336, in _train_epoch
+    for batch_idx, batch in enumerate(pbar):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/tqdm/std.py", line 1181, in __iter__
+    for obj in iterable:
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 701, in __next__
+    data = self._next_data()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1465, in _next_data
+    return self._process_data(data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1491, in _process_data
+    data.reraise()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/_utils.py", line 715, in reraise
+    raise exception
+cv2.error: Caught error in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 50, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 118, in __getitem__
+    transformed = self.transform(image=image, mask=mask)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/composition.py", line 424, in __call__
+    data = t(**data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/composition.py", line 572, in __call__
+    data = t(force_apply=True, **data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/transforms_interface.py", line 172, in __call__
+    return self.apply_with_params(params, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/transforms_interface.py", line 197, in apply_with_params
+    target_function(ensure_contiguous_output(arg), **params),
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/augmentations/transforms.py", line 2503, in apply
+    return fmain.add_noise(img, gauss)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/utils.py", line 113, in wrapped_function
+    result = func(img, *args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/augmentations/functional.py", line 1882, in add_noise
+    return add_array(img, noise)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/utils.py", line 113, in wrapped_function
+    result = func(img, *args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/functions.py", line 253, in add_array
+    return add_opencv(img, value)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/decorators.py", line 43, in wrapped_function
+    result = func(img, *args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/functions.py", line 228, in add_opencv
+    return cv2.add(img, value)
+cv2.error: OpenCV(4.10.0) /io/opencv/modules/core/src/arithm.cpp:683: error: (-5:Bad argument) When the input arrays in add/subtract/multiply/divide functions have different types, the output array type must be explicitly specified in function 'arithm_op'
+
+
+2024-11-10 07:23:45,352 - src.training.trainer - INFO - Saved checkpoint to models/error.pth
+2024-11-10 07:23:50,007 - __main__ - ERROR - Training failed: Caught error in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 50, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 118, in __getitem__
+    transformed = self.transform(image=image, mask=mask)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/composition.py", line 424, in __call__
+    data = t(**data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/composition.py", line 572, in __call__
+    data = t(force_apply=True, **data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/transforms_interface.py", line 172, in __call__
+    return self.apply_with_params(params, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/transforms_interface.py", line 197, in apply_with_params
+    target_function(ensure_contiguous_output(arg), **params),
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/augmentations/transforms.py", line 2503, in apply
+    return fmain.add_noise(img, gauss)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/utils.py", line 113, in wrapped_function
+    result = func(img, *args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/augmentations/functional.py", line 1882, in add_noise
+    return add_array(img, noise)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/utils.py", line 113, in wrapped_function
+    result = func(img, *args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/functions.py", line 253, in add_array
+    return add_opencv(img, value)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/decorators.py", line 43, in wrapped_function
+    result = func(img, *args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/functions.py", line 228, in add_opencv
+    return cv2.add(img, value)
+cv2.error: OpenCV(4.10.0) /io/opencv/modules/core/src/arithm.cpp:683: error: (-5:Bad argument) When the input arrays in add/subtract/multiply/divide functions have different types, the output array type must be explicitly specified in function 'arithm_op'
+
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 58, in main
+    trainer.train()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 285, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 336, in _train_epoch
+    for batch_idx, batch in enumerate(pbar):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/tqdm/std.py", line 1181, in __iter__
+    for obj in iterable:
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 701, in __next__
+    data = self._next_data()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1465, in _next_data
+    return self._process_data(data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1491, in _process_data
+    data.reraise()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/_utils.py", line 715, in reraise
+    raise exception
+cv2.error: Caught error in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 50, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataset.py", line 420, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 118, in __getitem__
+    transformed = self.transform(image=image, mask=mask)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/composition.py", line 424, in __call__
+    data = t(**data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/composition.py", line 572, in __call__
+    data = t(force_apply=True, **data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/transforms_interface.py", line 172, in __call__
+    return self.apply_with_params(params, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/core/transforms_interface.py", line 197, in apply_with_params
+    target_function(ensure_contiguous_output(arg), **params),
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/augmentations/transforms.py", line 2503, in apply
+    return fmain.add_noise(img, gauss)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/utils.py", line 113, in wrapped_function
+    result = func(img, *args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albumentations/augmentations/functional.py", line 1882, in add_noise
+    return add_array(img, noise)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/utils.py", line 113, in wrapped_function
+    result = func(img, *args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/functions.py", line 253, in add_array
+    return add_opencv(img, value)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/decorators.py", line 43, in wrapped_function
+    result = func(img, *args, **kwargs)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/albucore/functions.py", line 228, in add_opencv
+    return cv2.add(img, value)
+cv2.error: OpenCV(4.10.0) /io/opencv/modules/core/src/arithm.cpp:683: error: (-5:Bad argument) When the input arrays in add/subtract/multiply/divide functions have different types, the output array type must be explicitly specified in function 'arithm_op'
+
+
+2024-11-10 07:28:25,266 - __main__ - ERROR - Training failed: 'SpineSegmentationDataset' object has no attribute 'series_type'
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 46, in main
+    trainer = SegmentationTrainer(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 63, in __init__
+    self._setup_datasets()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 186, in _setup_datasets
+    full_dataset = SpineSegmentationDataset(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 62, in __init__
+    self.data = self._load_and_prepare_data()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/datasets.py", line 72, in _load_and_prepare_data
+    series_info = series_df[series_df['series_description'] == self.series_type]
+AttributeError: 'SpineSegmentationDataset' object has no attribute 'series_type'
+2024-11-10 07:31:27,191 - src.training.datasets - INFO - Loaded 33554 samples for train
+2024-11-10 07:31:31,499 - src.training.trainer - INFO - Starting training...
+2024-11-10 07:31:31,875 - src.training.trainer - ERROR - Training failed: Caught RuntimeError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 55, in fetch
+    return self.collate_fn(data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 398, in default_collate
+    return collate(batch, collate_fn_map=default_collate_fn_map)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 171, in collate
+    {
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 172, in <dictcomp>
+    key: collate(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 155, in collate
+    return collate_fn_map[elem_type](batch, collate_fn_map=collate_fn_map)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 272, in collate_tensor_fn
+    return torch.stack(batch, 0, out=out)
+RuntimeError: stack expects each tensor to be equal size, but got [1, 320, 320] at entry 0 and [1, 512, 512] at entry 2
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 286, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 337, in _train_epoch
+    for batch_idx, batch in enumerate(pbar):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/tqdm/std.py", line 1181, in __iter__
+    for obj in iterable:
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 701, in __next__
+    data = self._next_data()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1465, in _next_data
+    return self._process_data(data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1491, in _process_data
+    data.reraise()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/_utils.py", line 715, in reraise
+    raise exception
+RuntimeError: Caught RuntimeError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 55, in fetch
+    return self.collate_fn(data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 398, in default_collate
+    return collate(batch, collate_fn_map=default_collate_fn_map)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 171, in collate
+    {
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 172, in <dictcomp>
+    key: collate(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 155, in collate
+    return collate_fn_map[elem_type](batch, collate_fn_map=collate_fn_map)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 272, in collate_tensor_fn
+    return torch.stack(batch, 0, out=out)
+RuntimeError: stack expects each tensor to be equal size, but got [1, 320, 320] at entry 0 and [1, 512, 512] at entry 2
+
+2024-11-10 07:31:32,100 - src.training.trainer - INFO - Saved checkpoint to models/error.pth
+2024-11-10 07:31:34,490 - __main__ - ERROR - Training failed: Caught RuntimeError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 55, in fetch
+    return self.collate_fn(data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 398, in default_collate
+    return collate(batch, collate_fn_map=default_collate_fn_map)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 171, in collate
+    {
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 172, in <dictcomp>
+    key: collate(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 155, in collate
+    return collate_fn_map[elem_type](batch, collate_fn_map=collate_fn_map)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 272, in collate_tensor_fn
+    return torch.stack(batch, 0, out=out)
+RuntimeError: stack expects each tensor to be equal size, but got [1, 320, 320] at entry 0 and [1, 512, 512] at entry 2
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 58, in main
+    trainer.train()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 286, in train
+    train_metrics = self._train_epoch()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 337, in _train_epoch
+    for batch_idx, batch in enumerate(pbar):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/tqdm/std.py", line 1181, in __iter__
+    for obj in iterable:
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 701, in __next__
+    data = self._next_data()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1465, in _next_data
+    return self._process_data(data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1491, in _process_data
+    data.reraise()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/_utils.py", line 715, in reraise
+    raise exception
+RuntimeError: Caught RuntimeError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 351, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 55, in fetch
+    return self.collate_fn(data)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 398, in default_collate
+    return collate(batch, collate_fn_map=default_collate_fn_map)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 171, in collate
+    {
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 172, in <dictcomp>
+    key: collate(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 155, in collate
+    return collate_fn_map[elem_type](batch, collate_fn_map=collate_fn_map)
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/env/lib/python3.10/site-packages/torch/utils/data/_utils/collate.py", line 272, in collate_tensor_fn
+    return torch.stack(batch, 0, out=out)
+RuntimeError: stack expects each tensor to be equal size, but got [1, 320, 320] at entry 0 and [1, 512, 512] at entry 2
+
+2024-11-10 07:35:28,483 - src.training.datasets - INFO - Loaded 33554 samples for train
+2024-11-10 07:35:30,942 - src.training.trainer - INFO - Starting training...
+2024-11-10 07:36:30,489 - src.training.datasets - INFO - Loaded 33554 samples for train
+2024-11-10 07:36:33,615 - src.training.trainer - INFO - Starting training...
+2024-11-10 07:37:46,194 - src.training.datasets - INFO - Loaded 33554 samples for train
+2024-11-10 07:37:49,547 - src.training.trainer - INFO - Starting training...
+2024-11-10 07:41:47,253 - __main__ - ERROR - Training failed: 'device'
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 46, in main
+    trainer = SegmentationTrainer(
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 62, in __init__
+    self._setup_model()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 144, in _setup_model
+    self.model = SpineSegmentationModel().to(self.config['device'])
+KeyError: 'device'
+2024-11-10 07:46:23,940 - src.training.trainer - INFO - Using device: cpu
+2024-11-10 07:46:24,110 - src.training.trainer - INFO - Model initialized with 31,389,764 parameters
+2024-11-10 07:46:35,352 - src.training.datasets - INFO - Loaded 5000 samples for train
+2024-11-10 07:46:36,167 - src.training.trainer - INFO - Starting training...
+2024-11-10 07:46:36,167 - src.training.trainer - ERROR - Training failed: 'SegmentationTrainer' object has no attribute 'distributed'
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 211, in train
+    if self.distributed:
+AttributeError: 'SegmentationTrainer' object has no attribute 'distributed'
+2024-11-10 07:46:36,167 - src.training.trainer - ERROR - Error saving checkpoint: 'SegmentationTrainer' object has no attribute 'global_step'
+2024-11-10 07:46:36,167 - src.training.trainer - ERROR - Failed to save emergency checkpoint
+2024-11-10 07:46:36,167 - __main__ - ERROR - Training failed: 'SegmentationTrainer' object has no attribute 'distributed'
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 211, in train
+    if self.distributed:
+AttributeError: 'SegmentationTrainer' object has no attribute 'distributed'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/train_segmentation.py", line 33, in main
+    trainer.train()
+  File "/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/src/training/trainer.py", line 250, in train
+    if not self.distributed or (self.distributed and dist.get_rank() == 0):
+AttributeError: 'SegmentationTrainer' object has no attribute 'distributed'
