@@ -1,13 +1,19 @@
+import os
+import cv2
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+import torch.distributed as dist
+import torch.multiprocessing as mp
+from torch.utils.data import DataLoader, random_split
 from torch.cuda.amp import GradScaler, autocast
+from torch.nn.parallel import DistributedDataParallel as DDP
 import logging
-from pathlib import Path
-from typing import Dict, Optional
-from tqdm import tqdm
 import numpy as np
+from pathlib import Path
+from typing import Dict, Optional, Tuple, List
+from tqdm import tqdm
+from scipy.ndimage import gaussian_filter
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 import wandb
 
@@ -22,130 +28,295 @@ from src.training.metrics import (
 logger = logging.getLogger(__name__)
 
 class SegmentationTrainer:
-    """Complete training pipeline for spine segmentation"""
+    """Production-ready training pipeline for spine segmentation"""
     
-    def __init__(self,
-                 data_root: Path,
-                 model_save_dir: Path,
-                 config: Optional[Dict] = None):
+    def __init__(
+        self,
+        data_root: Path,
+        model_save_dir: Path,
+        config: Optional[Dict] = None,
+        distributed: bool = False
+    ):
         """
-        Initialize trainer
+        Initialize trainer with enhanced error handling and distributed support
         
         Args:
             data_root: Root directory containing data
             model_save_dir: Directory to save models
             config: Optional configuration dictionary
+            distributed: Whether to use distributed training
         """
         self.data_root = Path(data_root)
         self.model_save_dir = Path(model_save_dir)
         self.model_save_dir.mkdir(parents=True, exist_ok=True)
+        self.distributed = distributed
         
+        # Validate and set configuration
+        self._setup_config(config)
+        
+        # Setup distributed training if needed
+        if self.distributed:
+            self._setup_distributed()
+        
+        # Initialize model and training components
+        self._setup_model()
+        self._setup_datasets()
+        self._setup_training_components()
+        
+        # Initialize trackers
+        self.best_val_loss = float('inf')
+        self.patience_counter = 0
+        self.current_epoch = 0
+        self.global_step = 0
+        
+        # Setup wandb only on main process
+        if not self.distributed or (self.distributed and dist.get_rank() == 0):
+            self._setup_wandb()
+    
+    def _setup_config(self, config: Optional[Dict]):
+        """Setup and validate configuration with type checking"""
         # Default configuration
         self.config = {
             'batch_size': 8,
             'num_epochs': 100,
             'learning_rate': 1e-4,
             'weight_decay': 1e-5,
-            'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-            'num_workers': 4,
-            'patience': 10,  # Early stopping patience
-            'T_0': 10,  # Cosine annealing period
-            'eta_min': 1e-6,  # Minimum learning rate
+            'num_workers': min(os.cpu_count(), 8),
+            'patience': 10,
+            'T_0': 10,
+            'eta_min': 1e-6,
             'grad_clip': 1.0,
-            'mixed_precision': True
+            'mixed_precision': True,
+            'val_split': 0.2,
+            'seed': 42,
+            'pin_memory': True,
+            'accumulation_steps': 1
         }
-        if config:
-            self.config.update(config)
         
-        # Initialize model
+        # Update with provided config
+        if config:
+            # Convert numeric strings to proper types
+            processed_config = {}
+            for k, v in config.items():
+                if isinstance(v, str):
+                    try:
+                        if '.' in v:
+                            processed_config[k] = float(v)
+                        else:
+                            processed_config[k] = int(v)
+                    except ValueError:
+                        processed_config[k] = v
+                else:
+                    processed_config[k] = v
+            
+            self.config.update(processed_config)
+        
+        # Set device
+        self.config['device'] = (
+            torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        )
+        
+        # Validate configuration
+        self._validate_config()
+    
+    def _validate_config(self):
+        """Validate configuration values"""
+        validations = {
+            'batch_size': (int, (1, 512)),
+            'num_epochs': (int, (1, 1000)),
+            'learning_rate': (float, (1e-6, 1.0)),
+            'weight_decay': (float, (0.0, 0.1)),
+            'num_workers': (int, (0, os.cpu_count() or 1)),
+            'patience': (int, (1, 100)),
+            'T_0': (int, (1, 100)),
+            'eta_min': (float, (1e-12, 1e-3)),
+            'grad_clip': (float, (0.0, 100.0)),
+            'val_split': (float, (0.0, 0.5))
+        }
+        
+        for key, (dtype, (min_val, max_val)) in validations.items():
+            if key not in self.config:
+                raise ValueError(f"Missing required config key: {key}")
+            
+            val = self.config[key]
+            if not isinstance(val, dtype):
+                raise TypeError(f"Config {key} must be {dtype}, got {type(val)}")
+            
+            if not min_val <= val <= max_val:
+                raise ValueError(
+                    f"Config {key} must be between {min_val} and {max_val}, "
+                    f"got {val}"
+                )
+    
+    def _setup_distributed(self):
+        """Setup distributed training"""
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA is required for distributed training")
+        
+        if not dist.is_initialized():
+            dist.init_process_group(backend='nccl')
+        
+        torch.cuda.set_device(dist.get_rank())
+        self.config['device'] = torch.device(f"cuda:{dist.get_rank()}")
+        
+        logger.info(
+            f"Initialized distributed process group: "
+            f"rank {dist.get_rank()}/{dist.get_world_size()}"
+        )
+    
+    def _setup_model(self):
+        """Initialize model with distributed support"""
         self.model = SpineSegmentationModel().to(self.config['device'])
         
-        # Create datasets and dataloaders
-        self.train_dataset = SpineSegmentationDataset(
+        if self.distributed:
+            self.model = DDP(
+                self.model,
+                device_ids=[dist.get_rank()],
+                output_device=dist.get_rank()
+            )
+    
+    def _setup_datasets(self):
+        """Setup datasets with proper splitting"""
+        # Create full dataset
+        full_dataset = SpineSegmentationDataset(
             self.data_root,
-            mode='train'
+            mode='train'  # We'll split this ourselves
         )
-        self.val_dataset = SpineSegmentationDataset(
-            self.data_root,
-            mode='val'
+        
+        # Calculate split sizes
+        val_size = int(len(full_dataset) * self.config['val_split'])
+        train_size = len(full_dataset) - val_size
+        
+        # Split dataset
+        self.train_dataset, self.val_dataset = random_split(
+            full_dataset,
+            [train_size, val_size],
+            generator=torch.Generator().manual_seed(self.config['seed'])
         )
+        
+        # Create data loaders
+        loader_kwargs = {
+            'batch_size': self.config['batch_size'],
+            'num_workers': self.config['num_workers'],
+            'pin_memory': self.config['pin_memory']
+        }
+        
+        if self.distributed:
+            train_sampler = torch.utils.data.distributed.DistributedSampler(
+                self.train_dataset
+            )
+            loader_kwargs['sampler'] = train_sampler
+        else:
+            loader_kwargs['shuffle'] = True
         
         self.train_loader = DataLoader(
             self.train_dataset,
-            batch_size=self.config['batch_size'],
-            shuffle=True,
-            num_workers=self.config['num_workers'],
-            pin_memory=True
+            **loader_kwargs
         )
         
+        # Validation loader (no need for distributed sampling)
         self.val_loader = DataLoader(
             self.val_dataset,
             batch_size=self.config['batch_size'],
             shuffle=False,
             num_workers=self.config['num_workers'],
-            pin_memory=True
+            pin_memory=self.config['pin_memory']
         )
-        
-        # Setup loss, optimizer and scheduler
+    
+    def _setup_training_components(self):
+        """Setup loss, optimizer, scheduler and other training components"""
+        # Loss function
         self.criterion = nn.BCEWithLogitsLoss()
+        
+        # Optimizer
         self.optimizer = optim.AdamW(
             self.model.parameters(),
             lr=self.config['learning_rate'],
             weight_decay=self.config['weight_decay']
         )
+        
+        # Learning rate scheduler
         self.scheduler = CosineAnnealingWarmRestarts(
             self.optimizer,
             T_0=self.config['T_0'],
             eta_min=self.config['eta_min']
         )
         
-        # Setup mixed precision training
+        # Mixed precision training
         self.scaler = GradScaler() if self.config['mixed_precision'] else None
         
-        # Initialize tracking variables
-        self.best_val_loss = float('inf')
-        self.patience_counter = 0
-        self.current_epoch = 0
-        
-        # Initialize wandb
-        wandb.init(project='spine-segmentation', config=self.config)
+        # Metrics tracking
+        self.train_metrics = {
+            'loss': [],
+            'dice': [],
+            'iou': []
+        }
+        self.val_metrics = {
+            'loss': [],
+            'dice': [],
+            'iou': []
+        }
+    
+    def _setup_wandb(self):
+        """Initialize wandb logging"""
+        wandb.init(
+            project='spine-segmentation',
+            config=self.config,
+            resume=True if self.current_epoch > 0 else False
+        )
     
     def train(self):
-        """Run complete training loop"""
-        logger.info("Starting training...")
-        
-        for epoch in range(self.current_epoch, self.config['num_epochs']):
-            self.current_epoch = epoch
+        """Run complete training loop with enhanced error handling"""
+        try:
+            logger.info("Starting training...")
             
-            # Training phase
-            train_metrics = self._train_epoch()
-            
-            # Validation phase
-            val_metrics = self._validate_epoch()
-            
-            # Log metrics
-            self._log_metrics(train_metrics, val_metrics)
-            
-            # Learning rate scheduling
-            self.scheduler.step()
-            
-            # Save checkpoint and check early stopping
-            if val_metrics['val_loss'] < self.best_val_loss:
-                self.best_val_loss = val_metrics['val_loss']
-                self.patience_counter = 0
-                self._save_checkpoint('best.pth')
-            else:
-                self.patience_counter += 1
-                if self.patience_counter >= self.config['patience']:
-                    logger.info("Early stopping triggered")
-                    break
-            
-            # Regular checkpoint
-            if (epoch + 1) % 10 == 0:
-                self._save_checkpoint(f'checkpoint_epoch_{epoch+1}.pth')
+            for epoch in range(self.current_epoch, self.config['num_epochs']):
+                self.current_epoch = epoch
+                
+                if self.distributed:
+                    self.train_loader.sampler.set_epoch(epoch)
+                
+                # Training phase
+                train_metrics = self._train_epoch()
+                
+                # Validation phase (only on main process if distributed)
+                if not self.distributed or (self.distributed and dist.get_rank() == 0):
+                    val_metrics = self._validate_epoch()
+                    
+                    # Log metrics
+                    self._log_metrics(train_metrics, val_metrics)
+                    
+                    # Save checkpoint and check early stopping
+                    if val_metrics['val_loss'] < self.best_val_loss:
+                        self.best_val_loss = val_metrics['val_loss']
+                        self.patience_counter = 0
+                        self._save_checkpoint('best.pth')
+                    else:
+                        self.patience_counter += 1
+                        if self.patience_counter >= self.config['patience']:
+                            logger.info("Early stopping triggered")
+                            break
+                    
+                    # Regular checkpoint
+                    if (epoch + 1) % 10 == 0:
+                        self._save_checkpoint(f'checkpoint_epoch_{epoch+1}.pth')
+                
+                # Update learning rate
+                self.scheduler.step()
+                
+        except KeyboardInterrupt:
+            logger.info("Training interrupted by user")
+            self._save_checkpoint('interrupted.pth')
+        except Exception as e:
+            logger.error(f"Training failed: {str(e)}", exc_info=True)
+            self._save_checkpoint('error.pth')
+            raise
+        finally:
+            if not self.distributed or (self.distributed and dist.get_rank() == 0):
+                wandb.finish()
     
     def _train_epoch(self) -> Dict:
-        """Run one epoch of training"""
+        """Run one epoch of training with gradient accumulation"""
         self.model.train()
         epoch_metrics = {
             'train_loss': 0,
@@ -153,8 +324,12 @@ class SegmentationTrainer:
             'train_iou': 0
         }
         
+        # Reset gradients
+        self.optimizer.zero_grad()
+        
         with tqdm(self.train_loader, desc=f"Epoch {self.current_epoch+1}") as pbar:
-            for batch in pbar:
+            for batch_idx, batch in enumerate(pbar):
+                # Move data to device
                 images = batch['image'].to(self.config['device'])
                 masks = batch['mask'].to(self.config['device'])
                 
@@ -162,25 +337,30 @@ class SegmentationTrainer:
                 with autocast(enabled=self.config['mixed_precision']):
                     outputs = self.model(images)
                     loss = self.criterion(outputs, masks)
+                    # Scale loss for gradient accumulation
+                    loss = loss / self.config['accumulation_steps']
                 
-                # Backward pass
-                self.optimizer.zero_grad()
+                # Backward pass with gradient accumulation
                 if self.config['mixed_precision']:
                     self.scaler.scale(loss).backward()
-                    self.scaler.unscale_(self.optimizer)
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(),
-                        self.config['grad_clip']
-                    )
-                    self.scaler.step(self.optimizer)
-                    self.scaler.update()
+                    if (batch_idx + 1) % self.config['accumulation_steps'] == 0:
+                        self.scaler.unscale_(self.optimizer)
+                        torch.nn.utils.clip_grad_norm_(
+                            self.model.parameters(),
+                            self.config['grad_clip']
+                        )
+                        self.scaler.step(self.optimizer)
+                        self.scaler.update()
+                        self.optimizer.zero_grad()
                 else:
                     loss.backward()
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(),
-                        self.config['grad_clip']
-                    )
-                    self.optimizer.step()
+                    if (batch_idx + 1) % self.config['accumulation_steps'] == 0:
+                        torch.nn.utils.clip_grad_norm_(
+                            self.model.parameters(),
+                            self.config['grad_clip']
+                        )
+                        self.optimizer.step()
+                        self.optimizer.zero_grad()
                 
                 # Calculate metrics
                 with torch.no_grad():
@@ -189,16 +369,18 @@ class SegmentationTrainer:
                     iou = calculate_iou(predictions, masks)
                 
                 # Update metrics
-                epoch_metrics['train_loss'] += loss.item()
+                epoch_metrics['train_loss'] += loss.item() * self.config['accumulation_steps']
                 epoch_metrics['train_dice'] += dice.item()
                 epoch_metrics['train_iou'] += iou.item()
                 
                 # Update progress bar
                 pbar.set_postfix({
-                    'loss': loss.item(),
+                    'loss': loss.item() * self.config['accumulation_steps'],
                     'dice': dice.item(),
                     'lr': self.optimizer.param_groups[0]['lr']
                 })
+                
+                self.global_step += 1
         
         # Average metrics
         num_batches = len(self.train_loader)
@@ -207,110 +389,216 @@ class SegmentationTrainer:
         
         return epoch_metrics
     
+    @torch.no_grad()
     def _validate_epoch(self) -> Dict:
-        """Run validation"""
+        """Run validation with enhanced metrics"""
         self.model.eval()
         val_metrics = {
             'val_loss': 0,
             'val_dice': 0,
-            'val_iou': 0
+            'val_iou': 0,
+            'val_precision': 0,
+            'val_recall': 0
         }
         
-        with torch.no_grad():
-            for batch in tqdm(self.val_loader, desc="Validation"):
-                images = batch['image'].to(self.config['device'])
-                masks = batch['mask'].to(self.config['device'])
-                
-                outputs = self.model(images)
-                loss = self.criterion(outputs, masks)
-                
-                predictions = torch.sigmoid(outputs) > 0.5
-                dice = calculate_dice_score(predictions, masks)
-                iou = calculate_iou(predictions, masks)
-                
-                val_metrics['val_loss'] += loss.item()
-                val_metrics['val_dice'] += dice.item()
-                val_metrics['val_iou'] += iou.item()
+        for batch in tqdm(self.val_loader, desc="Validation"):
+            images = batch['image'].to(self.config['device'])
+            masks = batch['mask'].to(self.config['device'])
+            
+            # Forward pass
+            outputs = self.model(images)
+            loss = self.criterion(outputs, masks)
+            
+            # Calculate metrics
+            predictions = torch.sigmoid(outputs) > 0.5
+            dice = calculate_dice_score(predictions, masks)
+            iou = calculate_iou(predictions, masks)
+            precision, recall = calculate_precision_recall(predictions, masks)
+            
+            # Update metrics
+            val_metrics['val_loss'] += loss.item()
+            val_metrics['val_dice'] += dice.item()
+            val_metrics['val_iou'] += iou.item()
+            val_metrics['val_precision'] += precision.item()
+            val_metrics['val_recall'] += recall.item()
         
         # Average metrics
         num_batches = len(self.val_loader)
         for key in val_metrics:
-            val_metrics[key] /= num_batches
+            val_metrics[key] /= num_batches        
         
         return val_metrics
     
     def _log_metrics(self, train_metrics: Dict, val_metrics: Dict):
-        """Log metrics to wandb and console"""
-        metrics = {**train_metrics, **val_metrics}
-        wandb.log(metrics, step=self.current_epoch)
-        
-        logger.info(
-            f"Epoch {self.current_epoch+1} - "
-            f"Train Loss: {train_metrics['train_loss']:.4f}, "
-            f"Val Loss: {val_metrics['val_loss']:.4f}, "
-            f"Train Dice: {train_metrics['train_dice']:.4f}, "
-            f"Val Dice: {val_metrics['val_iou']:.4f}"
-        )
+        """Enhanced metric logging with error handling"""
+        try:
+            # Combine metrics
+            metrics = {
+                **train_metrics,
+                **val_metrics,
+                'learning_rate': self.optimizer.param_groups[0]['lr'],
+                'epoch': self.current_epoch
+            }
+            
+            # Log to wandb
+            if wandb.run is not None:
+                wandb.log(metrics, step=self.global_step)
+            
+            # Log to console
+            metric_str = (
+                f"Epoch {self.current_epoch+1} - "
+                f"Train Loss: {train_metrics['train_loss']:.4f}, "
+                f"Val Loss: {val_metrics['val_loss']:.4f}, "
+                f"Train Dice: {train_metrics['train_dice']:.4f}, "
+                f"Val Dice: {val_metrics['val_dice']:.4f}, "
+                f"Val IoU: {val_metrics['val_iou']:.4f}"
+            )
+            logger.info(metric_str)
+            
+            # Store metrics for later analysis
+            self.train_metrics['loss'].append(train_metrics['train_loss'])
+            self.train_metrics['dice'].append(train_metrics['train_dice'])
+            self.train_metrics['iou'].append(train_metrics['train_iou'])
+            
+            self.val_metrics['loss'].append(val_metrics['val_loss'])
+            self.val_metrics['dice'].append(val_metrics['val_dice'])
+            self.val_metrics['iou'].append(val_metrics['val_iou'])
+            
+        except Exception as e:
+            logger.error(f"Error logging metrics: {str(e)}")
     
     def _save_checkpoint(self, filename: str):
-        """Save model checkpoint"""
-        save_path = self.model_save_dir / filename
-        torch.save({
-            'epoch': self.current_epoch,
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'scheduler_state_dict': self.scheduler.state_dict(),
-            'best_val_loss': self.best_val_loss,
-            'config': self.config,
-            'scaler': self.scaler.state_dict() if self.scaler else None
-        }, save_path)
-        logger.info(f"Saved checkpoint to {save_path}")
+        """Enhanced checkpoint saving with error handling"""
+        try:
+            save_path = self.model_save_dir / filename
+            
+            # Prepare checkpoint data
+            checkpoint = {
+                'epoch': self.current_epoch,
+                'global_step': self.global_step,
+                'model_state_dict': self.model.module.state_dict() if self.distributed 
+                                  else self.model.state_dict(),
+                'optimizer_state_dict': self.optimizer.state_dict(),
+                'scheduler_state_dict': self.scheduler.state_dict(),
+                'scaler': self.scaler.state_dict() if self.scaler else None,
+                'best_val_loss': self.best_val_loss,
+                'train_metrics': self.train_metrics,
+                'val_metrics': self.val_metrics,
+                'config': self.config
+            }
+            
+            # Save checkpoint with error handling
+            torch.save(checkpoint, save_path)
+            logger.info(f"Saved checkpoint to {save_path}")
+            
+            # Also save a backup
+            if 'best' in filename or 'final' in filename:
+                backup_path = save_path.parent / f"backup_{filename}"
+                torch.save(checkpoint, backup_path)
+                logger.info(f"Saved backup checkpoint to {backup_path}")
+                
+        except Exception as e:
+            logger.error(f"Error saving checkpoint: {str(e)}")
+            # Try to save in a different location as backup
+            try:
+                emergency_path = Path('emergency_checkpoint.pth')
+                torch.save(checkpoint, emergency_path)
+                logger.info(f"Saved emergency checkpoint to {emergency_path}")
+            except:
+                logger.error("Failed to save emergency checkpoint")
     
     def load_checkpoint(self, checkpoint_path: Path):
-        """Load model checkpoint"""
-        if not checkpoint_path.exists():
-            logger.warning(f"Checkpoint {checkpoint_path} does not exist")
-            return
-        
-        checkpoint = torch.load(checkpoint_path, map_location=self.config['device'])
-        
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-        if self.scaler and checkpoint['scaler']:
-            self.scaler.load_state_dict(checkpoint['scaler'])
-        
-        self.current_epoch = checkpoint['epoch']
-        self.best_val_loss = checkpoint['best_val_loss']
-        logger.info(f"Loaded checkpoint from epoch {self.current_epoch}")
+        """Enhanced checkpoint loading with validation"""
+        try:
+            logger.info(f"Loading checkpoint from {checkpoint_path}")
+            
+            # Load checkpoint to CPU first to save memory
+            checkpoint = torch.load(checkpoint_path, map_location='cpu')
+            
+            # Validate checkpoint content
+            required_keys = {
+                'epoch', 'model_state_dict', 'optimizer_state_dict',
+                'scheduler_state_dict', 'config'
+            }
+            if not all(k in checkpoint for k in required_keys):
+                raise ValueError(f"Checkpoint missing required keys: {required_keys}")
+            
+            # Update config if needed
+            self.config.update(checkpoint['config'])
+            
+            # Load model state
+            if self.distributed:
+                self.model.module.load_state_dict(checkpoint['model_state_dict'])
+            else:
+                self.model.load_state_dict(checkpoint['model_state_dict'])
+            
+            # Load optimizer state
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            
+            # Load scheduler state
+            self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+            
+            # Load scaler if it exists
+            if self.scaler and checkpoint.get('scaler'):
+                self.scaler.load_state_dict(checkpoint['scaler'])
+            
+            # Restore training state
+            self.current_epoch = checkpoint['epoch']
+            self.global_step = checkpoint.get('global_step', 0)
+            self.best_val_loss = checkpoint.get('best_val_loss', float('inf'))
+            
+            # Restore metrics if they exist
+            if 'train_metrics' in checkpoint:
+                self.train_metrics = checkpoint['train_metrics']
+            if 'val_metrics' in checkpoint:
+                self.val_metrics = checkpoint['val_metrics']
+            
+            logger.info(f"Successfully loaded checkpoint from epoch {self.current_epoch}")
+            
+        except Exception as e:
+            logger.error(f"Error loading checkpoint: {str(e)}")
+            raise
     
+    @torch.no_grad()
     def predict(self, image: torch.Tensor) -> np.ndarray:
         """
-        Make prediction with post-processing
+        Make prediction with enhanced error handling and post-processing
         
         Args:
-            image: Input image tensor [1, C, H, W]
+            image: Input image tensor [B, C, H, W]
             
         Returns:
             Processed segmentation mask
         """
-        self.model.eval()
-        with torch.no_grad():
+        try:
+            self.model.eval()
+            
+            # Ensure input is on correct device
+            image = image.to(self.config['device'])
+            
+            # Make prediction
             with autocast(enabled=self.config['mixed_precision']):
-                output = self.model(image.to(self.config['device']))
+                output = self.model(image)
                 pred = torch.sigmoid(output) > 0.5
-                
-        # Convert to numpy
-        mask = pred.cpu().numpy()[0]
-        
-        # Post-process
-        processed_mask = self._post_process_prediction(mask)
-        
-        return processed_mask
+            
+            # Move to CPU and convert to numpy
+            mask = pred.cpu().numpy()
+            
+            # Post-process each image in batch
+            processed_masks = []
+            for i in range(mask.shape[0]):
+                processed = self._post_process_prediction(mask[i])
+                processed_masks.append(processed)
+            
+            return np.stack(processed_masks)
+            
+        except Exception as e:
+            logger.error(f"Error during prediction: {str(e)}")
+            raise
     
     def _post_process_prediction(self, mask: np.ndarray) -> np.ndarray:
         """
-        Apply post-processing to prediction mask
+        Enhanced post-processing with better error handling
         
         Args:
             mask: Raw prediction mask [C, H, W]
@@ -318,40 +606,69 @@ class SegmentationTrainer:
         Returns:
             Processed mask
         """
-        processed = mask.copy()
-        
-        # 1. Apply morphological operations
-        kernel = np.ones((3, 3), np.uint8)
-        for c in range(processed.shape[0]):
-            processed[c] = cv2.morphologyEx(
-                processed[c].astype(np.uint8),
-                cv2.MORPH_OPEN,
-                kernel
-            )
-            processed[c] = cv2.morphologyEx(
-                processed[c],
-                cv2.MORPH_CLOSE,
-                kernel
-            )
-        
-        # 2. Remove small components
-        for c in range(processed.shape[0]):
-            num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
-                processed[c].astype(np.uint8),
-                connectivity=8
-            )
+        try:
+            processed = mask.copy()
             
-            # Remove components smaller than threshold
-            min_size = 50  # pixels
-            for i in range(1, num_labels):
-                if stats[i, cv2.CC_STAT_AREA] < min_size:
-                    labels[labels == i] = 0
+            # 1. Apply morphological operations
+            kernel = np.ones((3, 3), np.uint8)
+            for c in range(processed.shape[0]):
+                # Open operation (remove small objects)
+                processed[c] = cv2.morphologyEx(
+                    processed[c].astype(np.uint8),
+                    cv2.MORPH_OPEN,
+                    kernel,
+                    iterations=1
+                )
+                
+                # Close operation (fill small holes)
+                processed[c] = cv2.morphologyEx(
+                    processed[c],
+                    cv2.MORPH_CLOSE,
+                    kernel,
+                    iterations=1
+                )
             
-            processed[c] = labels > 0
-        
-        # 3. Apply smoothing
-        for c in range(processed.shape[0]):
-            processed[c] = gaussian_filter(processed[c].astype(float), sigma=0.5)
-            processed[c] = processed[c] > 0.5
-        
-        return processed
+            # 2. Remove small components with area filtering
+            for c in range(processed.shape[0]):
+                # Find connected components
+                num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
+                    processed[c].astype(np.uint8),
+                    connectivity=8
+                )
+                
+                # Remove small components
+                min_size = max(50, processed[c].size * 0.001)  # Dynamic threshold
+                for i in range(1, num_labels):
+                    if stats[i, cv2.CC_STAT_AREA] < min_size:
+                        labels[labels == i] = 0
+                
+                processed[c] = labels > 0
+            
+            # 3. Apply boundary smoothing
+            for c in range(processed.shape[0]):
+                # Convert to float for gaussian filter
+                smooth = gaussian_filter(
+                    processed[c].astype(float),
+                    sigma=0.5,
+                    mode='reflect'
+                )
+                processed[c] = smooth > 0.5
+            
+            return processed
+            
+        except Exception as e:
+            logger.error(f"Error in post-processing: {str(e)}")
+            # Return original mask if post-processing fails
+            return mask
+
+    def cleanup(self):
+        """Cleanup resources"""
+        try:
+            if self.distributed:
+                dist.destroy_process_group()
+            
+            if wandb.run is not None:
+                wandb.finish()
+            
+        except Exception as e:
+            logger.error(f"Error during cleanup: {str(e)}")
