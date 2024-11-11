@@ -1,0 +1,23 @@
+# src/config/training_config.yaml
+
+# Training parameters
+batch_size: 8
+num_epochs: 100
+learning_rate: 0.0001  # Changed from "1e-4" to 0.0001
+weight_decay: 0.00001  # Changed from "1e-5" to 0.00001
+num_workers: 4
+
+# Early stopping
+patience: 10
+
+# Scheduler parameters
+T_0: 10
+eta_min: 0.000001  # Changed from "1e-6" to 0.000001
+
+# Training options
+grad_clip: 1.0
+mixed_precision: true
+
+# Model parameters
+in_channels: 1
+out_channels: 4
