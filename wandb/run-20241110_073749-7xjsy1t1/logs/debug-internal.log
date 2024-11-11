@@ -1,8 +1,0 @@
-{"time":"2024-11-10T07:37:49.031375512+02:00","level":"INFO","msg":"using version","core version":"0.18.6"}
-{"time":"2024-11-10T07:37:49.031390861+02:00","level":"INFO","msg":"created symlink","path":"/home/blvksh33p/Downloads/rsna-2024-lumbar-spine-degenerative-classification/spine_pipeline/wandb/run-20241110_073749-7xjsy1t1/logs/debug-core.log"}
-{"time":"2024-11-10T07:37:49.136265026+02:00","level":"INFO","msg":"created new stream","id":"7xjsy1t1"}
-{"time":"2024-11-10T07:37:49.136298599+02:00","level":"INFO","msg":"stream: started","id":"7xjsy1t1"}
-{"time":"2024-11-10T07:37:49.136521903+02:00","level":"INFO","msg":"handler: started","stream_id":{"value":"7xjsy1t1"}}
-{"time":"2024-11-10T07:37:49.136763842+02:00","level":"INFO","msg":"sender: started","stream_id":"7xjsy1t1"}
-{"time":"2024-11-10T07:37:49.136827843+02:00","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"7xjsy1t1"}}
-{"time":"2024-11-10T07:37:49.478272345+02:00","level":"INFO","msg":"Starting system monitor"}
